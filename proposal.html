@@ -1,0 +1,191 @@
+
+
+<!DOCTYPE html>
+<html>
+<title>Proposal</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+<style>
+body,h1,h2,h3,h4,h5 {font-family: "Raleway", sans-serif}
+</style>
+<body class="w3-light-grey">
+
+<!-- w3-content defines a container for fixed size centered content,
+and is wrapped around the whole page content, except for the footer in this example -->
+<div class="w3-content" style="max-width:1400px">
+
+<!-- Header -->
+<header class="w3-container w3-center w3-padding-32">
+  <h1><b> Parallelizing Maze Generation and Particle Filtering Proposal </b></h1>
+  <p>Welcome to our proposal from <span class="w3-tag">Utkarsh and Justin!</span></p>
+</header>
+
+<style>
+.grid {
+    margin-left: 225px;
+    margin-right: 225px;
+}
+
+.session-title {
+    display: inline;
+}
+</style>
+
+<!-- Grid -->
+<div class="w3-row grid">
+
+
+
+<!-- Blog entries -->
+<div class="w3-col w3-margin w3-padding s12">
+  <!-- Blog entry -->
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container">
+      <h3><b> Summary </b></h3>
+    </div>
+
+    <div class="w3-container w3-large">
+      <p> We plan to parallelize random maze generation and particle filtering. Maze generation has a nice dual interpretation with graph search algorithms. Through openMP and MPI interface, we want to efficently implement maze generation using sequential and parallel graph algorithms. After creating a maze, particle filtering, a method to determine the location of a robot, will be used to navigate through this maze. The aim of this project is to identify axis of parallelism learned through tools developed from 15418</p>
+    </div>
+  </div>
+  <hr>
+
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container w3-large">
+      <h3><b> Background </b></h3>
+    </div>
+
+    <div class="w3-container w3-large">
+      <p> There are many algorithms out there for maze generation, most of which are graph-based or recursive-division-based (https://en.wikipedia.org/wiki/Maze_generation_algorithm). Graph-based algorithms generally use stacks/queues to keep track of nodes that it has to visit. However, this strategy does not scale well for graphs with large depth. We plan to parallelize this graph-based generation, where multiple threads will generate parts of the maze while communicating with each other about the path they have generated, and the remaining paths. Why maze generation? Maze generation can be applied to random game developement and world generation. </p>
+      <p>The second part of our project deals with finding an entry/exit from the maze from the perspective of a robot if it exists. The robot would be able to get a 360-degree view from its current position learn it's location. To implement this, we assume that the robot knows the entire map space, and it's relative observations of its current location, but does not know it's absolute location. In this view, we can represent the robot initially being in a uniform distribution of all locations. This is known as particle filtering. First, we transition each particle uniformly at random. Next the robot itself takes a snapshot of it's relative location. This could include features such as how many walls there are, which direction are the walls located, etc... Finally, we update our belief on where the particles are and resample based on that distribution. The whole process repeats until we figure out where the robot lies with high probability. Particle filtering is used in roombas, a self-service cleaning robot in common households. </p>
+    </div>
+  </div>
+  <hr>
+
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container w3-large">
+      <h3><b> The Challenge </b></h3>
+    </div>
+
+    <div class="w3-container w3-large">
+        <p> For the maze generation, the complexity lies in the tradeoff betweenbetween  communication/computation and correctness for graph-based algorithms. In this case, the ‘correct’ answer should allow the maze to converge to a solution quickly, but communicating the track of visited paths, and calculating new paths over a graph would be challenging. For OpenMP, we could just provide the ‘root’ node of the visited path to other path generators, but the challenge would increase with MPI. Moreover, the generators should avoid traversing the same path more than once, or generating paths that are next to each other. In terms of locality, as we move in a DFS or as we are backtracking, we could lose locality, since the graph as we move downwards in the y-axis, we could move out one cache line. We will carefully consider the options on how to reduce this with our graph generator. </p>
+      <p> Particle filtering has inherent parallelsim to transition and update the probabilites of every particle. However, there are implicit synchronization barriers so that one particle sample isn't ahead of another particles sample. Furthermore, there isn't a clear way to parallelize how the robot will move once it determines its location. Instead, we may want to add multiple robots in the maze</p>
+    </div>
+  </div>
+  <hr>
+
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container">
+      <h3><b> Resources </b></h3>
+    </div>
+
+    <div class="w3-container w3-large">
+        <p> The Wikipedia page provides some high-level references on different generation algorithms. We plan to backtrack from the page and find out the original citations for the maze generators. Unfortunately, most references weren’t linked at the bottom of the Wiki page. We plan to use the provided sequential implementations as a baseline. </p>
+        <a href="https://en.wikipedia.org/wiki/Maze_generation_algorithm"> Wiki Link </a>
+        <p> For particle filtering, we will refer to these slides courtesy of MIT. These slides outline the basic algorithm for particle filtering </p>       
+        <a href="https://web.mit.edu/16.412j/www/html/Advanced%20lectures/Slides/Hsaio_plinval_miller_ParticleFiltersPrint.pdf"> Slides </a> 
+        <p> We plan to use the GHC machines for most of our development tasks. We would largely benefit from using the PSC machines, so we can run on higher thread counts, and witness large parallelism and faster generation/traversal, or work with larger mazes. </p>
+    </div>
+  </div>
+  <hr>
+
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container ">
+      <h3><b> Goals and Deliverables </b></h3>
+    </div>
+
+    <div class="w3-container w3-large">
+        <p> 
+          <b>Goal 1: Maze Generation</b><br>
+         The user will be able to see the maze being generated in real-time with increasing thread counts on both openMP and MPI.<br>
+
+         <b>Goal 2: Robot traversal</b><br>
+         The user will be able to see the robot ‘figure’ a path in the maze. The movement of the robot will be faster with increasing thread counts.<br>
+
+         <b>Goal 3: Multi-robot traversal (speculative) </b><br>
+         Mulitple robots will traverse the graph and finally converge on a path if one exists. In the case of multiple paths, there will be a tie-breaker.
+         </p>
+    </div>
+  </div>
+  <hr>
+
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container">
+      <h3><b> Platform Choice </b></h3>
+    </div>
+
+    <div class="w3-container w3-large">
+        <p> OpenMP and MPI are good choices since we have a good balance of communication/communication between the generators and finding the path for a robot. We considered CUDA, but the task pool for random maze generation isn't large enough to warrant the creation of many CUDA threads. In addition, we don’t expect graphic intense issues for our program. If we did some type of block-based graph generator, CUDA might be useful, or if our graph was really really huge. However, we may consider the use of CUDA for our particle generator since each particle may have its own thread.
+ </p>
+    </div>
+  </div>
+  <hr>
+
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container">
+      <h3><b> Schedule </b></h3>
+
+        <div class="schedule">
+          <h3 class="time-slot">11/12</h3>
+          <div class="session session-1 track-1">
+            <h4 class="session-title"> Sequential versions implemented </h4>
+            <span class="session-presenter"> (Utkarsh/Justin) </span> <br>
+            <li>
+                We expect some hiccups in the beginning (drawing to a console, working out the logic ...)
+            </li>
+          </div>
+
+          <h3 class="time-slot">11/19</h3>
+          <div class="session session-1 track-1">
+            <h4 class="session-title"> OpenMP Version of Graph/Particle Filtering implemented </h4>
+            <span class="session-presenter"> (Utkarsh/Justin) </span> <br>
+            <li> Bugs may still exist, but implemented thoroughly to move on </li>
+          </div>
+
+          <h3 class="time-slot">11/26</h3>
+          <div class="session session-1 track-1">
+            <h4 class="session-title"> MPI Version of Graph/Particle Filtering implemented </h4>
+            <span class="session-presenter"> (Utkarsh/Justin) </span> <br>
+            <li> Bugs may still exist, but implemented thoroughly to move on </li>
+          </div>
+
+          <h3 class="time-slot">12/3</h3>
+          <div class="session session-1 track-1">
+            <h4 class="session-title"> Performance tunning and debugging </h4>
+            <span class="session-presenter"> (Utkarsh/Justin) </span> <br>
+            <li> Using perfstat to improve performance </li>
+            <li> Finding the happy medium for the granularity of work </li>
+            <li> Debugging </li>
+          </div>
+
+        <br>
+        </div> <!-- end .schedule -->
+        <p> We plan to implement particle filtering in parallel with the maze generation after the sequential versions. This means we will have modularize the code to work with sequential maze generation and parallel particle filtering. It time permits, a cuda versino will be implemented buy only for particle filtering. </p>
+    </div>
+
+    <div class="w3-container w3-large">
+    </div>
+  </div>
+  <hr>
+
+<!-- END BLOG ENTRIES -->
+</div>
+
+
+<!-- END GRID -->
+</div><br>
+
+<!-- END w3-content -->
+</div>
+
+<!-- Footer -->
+<!-- Footer -->
+<footer class="w3-container w3-dark-grey w3-padding-32 w3-margin-top">
+  <a class="w3-button w3-black w3-padding-large w3-margin-bottom" href="./index.html" >Home »</a>
+</footer>
+
+</body>
+</html>
+
