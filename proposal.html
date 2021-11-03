@@ -70,7 +70,7 @@ and is wrapped around the whole page content, except for the footer in this exam
     </div>
 
     <div class="w3-container w3-large">
-        <p> For the maze generation, the complexity lies in the tradeoff betweenbetween  communication/computation and correctness for graph-based algorithms. In this case, the ‘correct’ answer should allow the maze to converge to a solution quickly, but communicating the track of visited paths, and calculating new paths over a graph would be challenging. For OpenMP, we could just provide the ‘root’ node of the visited path to other path generators, but the challenge would increase with MPI. Moreover, the generators should avoid traversing the same path more than once, or generating paths that are next to each other. In terms of locality, as we move in a DFS or as we are backtracking, we could lose locality, since the graph as we move downwards in the y-axis, we could move out one cache line. We will carefully consider the options on how to reduce this with our graph generator. </p>
+        <p> For the maze generation, the complexity lies in the tradeoff between communication/computation and correctness for graph-based algorithms. In this case, the ‘correct’ answer should allow the maze to converge to a solution quickly, but communicating the track of visited paths, and calculating new paths over a graph would be challenging. For OpenMP, we could just provide the ‘root’ node of the visited path to other path generators, but the challenge would increase with MPI. Moreover, the generators should avoid traversing the same path more than once, or generating paths that are next to each other. In terms of locality, as we move in a DFS or as we are backtracking, we could lose locality, since the graph as we move downwards in the y-axis, we could move out one cache line. We will carefully consider the options on how to reduce this with our graph generator. </p>
       <p> Particle filtering has inherent parallelsim to transition and update the probabilites of every particle. However, there are implicit synchronization barriers so that one particle sample isn't ahead of another particles sample. Furthermore, there isn't a clear way to parallelize how the robot will move once it determines its location. Instead, we may want to add multiple robots in the maze</p>
     </div>
   </div>
@@ -162,7 +162,7 @@ and is wrapped around the whole page content, except for the footer in this exam
 
         <br>
         </div> <!-- end .schedule -->
-        <p> We plan to implement particle filtering in parallel with the maze generation after the sequential versions. This means we will have modularize the code to work with sequential maze generation and parallel particle filtering. It time permits, a cuda versino will be implemented buy only for particle filtering. </p>
+        <p> We plan to implement particle filtering in parallel with the maze generation after the sequential versions. This means we will have modularize the code to work with sequential maze generation and parallel particle filtering. It time permits, a cuda version will be implemented but only for particle filtering. </p>
     </div>
 
     <div class="w3-container w3-large">
