@@ -54,7 +54,8 @@ and is wrapped around the whole page content, except for the footer in this exam
     </div>
 
     <div class="w3-container w3-large">
-        <p> Content </p>
+      <p> There are many algorithms out there for maze generation, most of which are graph-based or recursive-division-based (https://en.wikipedia.org/wiki/Maze_generation_algorithm). For graph-based algorithms, it’s generally using a stack/queue to keep track of nodes that it has to visit. However, for graphs with large depth, this would take a very long time to generate a maze. We plan to parallelize this graph-based generation, where multiple threads would be generating parts of the maze while communicating with each other about the path they have generated, and the remaining paths.</p><br>
+      <p>The second part of our project deals with finding an entry/exit from the maze from the perspective of a robot if it exists. The robot would be able to get a 360-degree view from its current position and decide on taking a path. It would also need to keep a track of which paths has it visited, and which are remaining. The 360 degrees viewing as well as looking at which paths has been traversed/are left is parallelizable. In the case that this task is too simple, we can deploy multiple robots at each maze entry/exit to find a path out.</p>
     </div>
   </div>
   <hr>
@@ -65,7 +66,7 @@ and is wrapped around the whole page content, except for the footer in this exam
     </div>
 
     <div class="w3-container w3-large">
-        <p> Content </p>
+        <p> For the maze generation, the complexity lies in the tradeoff of communication/computation and correctness for graph-based algorithms. In this case, the ‘correct’ answer should allow the maze to converge to a solution quickly, but communicating track of visited paths, and calculating new paths over a graph would be challenging. For OpenMP, we could just provide the ‘root’ node of the visited path to other path generators, but the challenge would increase with MPI. Moreover, the generators should avoid traversing the same path more than once, or generating paths that are next to each other. In terms of locality, as we move in a DFS or as we are backtracking, we could lose locality, since the graph as we move downwards in the y-axis, we could move out one cache line. We will carefully consider the options on how to reduce this with our graph generator. </p>
     </div>
   </div>
   <hr>
@@ -76,7 +77,11 @@ and is wrapped around the whole page content, except for the footer in this exam
     </div>
 
     <div class="w3-container w3-large">
-        <p> Content </p>
+        <p> The Wikipedia page provides some high-level references on different generation algorithms. We plan to backtrack from the page and find out the original citations for the maze generators. Unfortunately, most references weren’t linked at the bottom of the Wiki page. We plan to use the provided sequential implementations as a baseline.<br>
+        https://en.wikipedia.org/wiki/Maze_generation_algorithm<br><br>
+
+        We plan to use the GHC machines for most of our development tasks. We would largely benefit from using the PSC machines, so we can run on higher thread counts, and witness large parallelism and faster generation/traversal, or work with larger mazes.
+         </p>
     </div>
   </div>
   <hr>
@@ -87,7 +92,16 @@ and is wrapped around the whole page content, except for the footer in this exam
     </div>
 
     <div class="w3-container w3-large">
-        <p> Content </p>
+        <p> 
+          <b>Goal 1: Maze Generation</b><br>
+         The user will be able to see the maze being generated in real-time with increasing thread counts on both openMP and MPI.<br>
+
+         <b>Goal 2: Robot traversal</b><br>
+         The user will be able to see the robot ‘figure’ a path in the maze. The movement of the robot will be faster with increasing thread counts.<br>
+
+         <b>Goal 3: Multi-robot traversal</b><br>
+         Mulitple robots will traverse the graph and finally converge on a path if one exists. In the case of multiple paths, there will be a tie-breaker.
+         </p>
     </div>
   </div>
   <hr>
@@ -98,7 +112,9 @@ and is wrapped around the whole page content, except for the footer in this exam
     </div>
 
     <div class="w3-container w3-large">
-        <p> Content </p>
+        <p> OpenMP and MPI are good choices since we have a good balance of communication/communication between the generators and finding the path for a robot. We considered CUDA, but there aren’t enough tasks for so many threads to do since we don’t expect graphic intense issues for our program. If we did some type of block-based graph generator, CUDA might be useful, or if our graph was really really huge.
+        However, we may consider the use of CUDA for our particle generator.
+ </p>
     </div>
   </div>
   <hr>
