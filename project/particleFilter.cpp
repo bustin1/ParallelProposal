@@ -10,6 +10,18 @@ float rand_num() {
     return (float)rand()/RAND_MAX;
 }
 
+// converts an image pixel to a grid location
+int convert(int width, int i, int scale) {
+
+    int x = i % width;
+    int y = i / width;
+
+    int gx = x / scale; 
+    int gy = y / scale;
+
+    return gx + gy*(width);
+}
+
 Pfilter::Pfilter(Grid* g, int n, int s) {
 
     numParticles = n;
@@ -68,19 +80,40 @@ int* Pfilter::get_particleLocations() {
     return particleLocations;
 }
 
+
 void Pfilter::transition() {
-//    int width = grid->width * scale;
-//    for (int i=0; i<numParticles; i++) {
-//        float dir = rand_num();
-//        if (dir < .25) // up
-//            particleLocations[i] -= width;
-//        else if (dir < .5) // right
-//            particleLocations[i] += 1;
-//        else if (dir < .75) // down 
-//            particleLocations[i] += width;
-//        else // left
-//            particleLocations[i] -= 1;
-//    }
+    int width = grid->width * scale;
+    for (int i=0; i<numParticles; i++) {
+        float dir = rand_num();
+        int loc = particleLocations[i];
+        if (dir < .25) { // up
+            loc -= width;
+            int j = convert(width, loc, scale);
+            if (grid->is_wall_at(j)) {
+                loc += width;
+            }
+        } else if (dir < .5) { // right
+            loc += 1;
+            int j = convert(width, loc, scale);
+            if (grid->is_wall_at(j)) {
+                loc -= 1;
+            }
+        } else if (dir < .75) { // down 
+            loc += width;
+            int j = convert(width, loc, scale);
+            if (grid->is_wall_at(j)) {
+                loc -= width;
+            }
+        } else { // left
+            loc -= 1;
+            int j = convert(width, loc, scale);
+            if (grid->is_wall_at(j)) {
+                loc += 1;
+            }
+        }
+
+        particleLocations[i] = loc;
+    }
 }
 
 

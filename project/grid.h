@@ -75,8 +75,6 @@ struct Grid {
     int to_img(int i, int scale) {
         int x = i % width;
         int y = i / width;
-        printf("x: %d\n", x);
-        printf("scale: %d\n", scale);
         int ix = x * scale;
         int iy = y * scale;
         int j = iy*width*scale + ix;
