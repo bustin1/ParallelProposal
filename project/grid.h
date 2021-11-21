@@ -17,6 +17,7 @@ struct Grid {
 
     // check if a wall is at a location
     bool is_wall_at(int i) {
+        if (i < 0 or i >= width * height) return true;
         return walls[i] == 1;
     }
 
@@ -59,6 +60,22 @@ struct Grid {
         walls[width+1] = 1;
 
         open = new int[num_open-1];
+        // calc_num_open();
+    }
+
+    // call these functions to initlize the grid;
+    void create_bullseye_layout(int x, int y) {
+
+        for (int r=0; r<height; r++) {
+            for (int c=0; c<width; c++) {
+                walls[r*width + c] = 1;
+                num_open--;
+            }
+        }
+        num_open++;
+        walls[y*width+x] = 0;
+
+        open = new int[num_open];
         // calc_num_open();
     }
 

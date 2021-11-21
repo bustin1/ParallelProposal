@@ -13,8 +13,10 @@ float rand_num() {
 // converts an image pixel to a grid location
 int convert(int width, int i, int scale) {
 
-    int x = i % width;
-    int y = i / width;
+    int iw = width * scale;
+
+    int x = i % iw;
+    int y = i / iw;
 
     int gx = x / scale; 
     int gy = y / scale;
@@ -38,10 +40,6 @@ Pfilter::Pfilter(Grid* g, int n, int s) {
 
     srand(time(NULL));
 
-    for (int i=0; i<num_open; i++) {
-        printf("open[%d]: %d\n", i, open[i]);
-    }
-
     for (int i=0; i<n; i++) {
         int random = rand_num() * num_open;
         int loc = open[random]; // uniformly random
@@ -49,8 +47,9 @@ Pfilter::Pfilter(Grid* g, int n, int s) {
         int j = g->to_img(loc, scale);
 
 
-        int offsetX = rand_num() * scale;
-        int offsetY = rand_num() * scale;
+        int offsetX = rand_num() * (scale-2) + 1;
+        int offsetY = rand_num() * (scale-2) + 1;
+
 
         int y = j / imgW + offsetX;
         int x = j % imgW + offsetY;
@@ -82,15 +81,16 @@ int* Pfilter::get_particleLocations() {
 
 
 void Pfilter::transition() {
-    int width = grid->width * scale;
+    int width = grid->width;
     for (int i=0; i<numParticles; i++) {
         float dir = rand_num();
         int loc = particleLocations[i];
+
         if (dir < .25) { // up
-            loc -= width;
+            loc += width * scale;
             int j = convert(width, loc, scale);
             if (grid->is_wall_at(j)) {
-                loc += width;
+                loc -= width * scale;
             }
         } else if (dir < .5) { // right
             loc += 1;
@@ -99,10 +99,10 @@ void Pfilter::transition() {
                 loc -= 1;
             }
         } else if (dir < .75) { // down 
-            loc += width;
+            loc -= width * scale;
             int j = convert(width, loc, scale);
             if (grid->is_wall_at(j)) {
-                loc -= width;
+                loc += width * scale;
             }
         } else { // left
             loc -= 1;

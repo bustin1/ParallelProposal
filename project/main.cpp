@@ -34,14 +34,16 @@ int main(int argc, char *argv[]) {
 
     const int w = 50;
     const int h = 50;
-    const int scale = 10; // 20 pixels per grid element
-    const int n = 50; // 50 particles
+    const int scale = 20; // 20 pixels per grid element
+    const int n = 50000; // 50 particles
 
     srand(time(NULL));
 
     Grid* grid = new Grid(w, h);
     grid->clear();
     grid->create_simple_layout();
+//    grid->create_checkered_layout();
+//    grid->create_bullseye_layout(0,0);
 
     Pfilter* filter = new Pfilter(grid, n, scale);
 
