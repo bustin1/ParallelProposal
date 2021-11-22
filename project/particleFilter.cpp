@@ -84,25 +84,29 @@ void Pfilter::transition() {
 
         if (dir < .25) { // up
             loc += imgWidth;
-            int j = to_grid(imgWidth, loc, gridScale);
+            int top = loc + imgWidth * (particleScale - 1);
+            int j = to_grid(imgWidth, top, gridScale);
             if (grid->is_wall_at(j)) {
                 loc -= imgWidth;
             }
         } else if (dir < .5) { // right
             loc += 1;
-            int j = to_grid(imgWidth, loc, gridScale);
+            int right = loc + (particleScale - 1);
+            int j = to_grid(imgWidth, right, gridScale);
             if (grid->is_wall_at(j)) {
                 loc -= 1;
             }
         } else if (dir < .75) { // down 
             loc -= imgWidth;
-            int j = to_grid(imgWidth, loc, gridScale);
+            int bot = loc - imgWidth * (particleScale - 1);
+            int j = to_grid(imgWidth, bot, gridScale);
             if (grid->is_wall_at(j)) {
                 loc += imgWidth;
             }
         } else { // left
             loc -= 1;
-            int j = to_grid(imgWidth, loc, gridScale);
+            int left = loc - (particleScale - 1);
+            int j = to_grid(imgWidth, left, gridScale);
             if (grid->is_wall_at(j)) {
                 loc += 1;
             }
@@ -112,22 +116,25 @@ void Pfilter::transition() {
     }
 }
 
-void Pfilter::fireray() {
-        
+int Pfilter::fireray(int loc, float angle) {
+
+//    int slope = 
+     
+    return 0;
 }
 
 
 void Pfilter::reweight() {
     
-    const double dtheta = 2 * PI / numRays;
-    for (int i=0; i<numParticles; i++) {
-        for (int j=0; j<numRays; j++) {
-            int loc = particleLocations[i];
-            double angle = j * dtheta;
-            int intersectionPnt = fireray(loc, angle);
-            // draw image lines 
-        }
-    }
+//    const double dtheta = 2 * PI / numRays;
+//    for (int i=0; i<numParticles; i++) {
+//        for (int j=0; j<numRays; j++) {
+//            int loc = particleLocations[i];
+//            double angle = j * dtheta;
+//            int intersectionPnt = fireray(loc, angle);
+//            // draw image lines 
+//        }
+//    }
 
 }
 

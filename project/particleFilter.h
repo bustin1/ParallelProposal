@@ -20,7 +20,7 @@ private:
 
     // unseen helper functions
     void transition();
-    void fireray();
+    int fireray(int loc, float angle);
     void reweight();
 
 

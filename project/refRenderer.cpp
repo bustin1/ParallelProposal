@@ -45,15 +45,22 @@ void RefRenderer::advanceAnimation() {
 void RefRenderer::render() {
     float* data = image->data;
     int* pLoc = filter->get_particleLocations();
-    int n = filter->get_numParticles();
+    int numParticles = filter->get_numParticles();
+    int particleScale = filter->get_particle_scale();
+    int imageWidth = image->width;
 
     // draws the particles
-    for (int i=0; i<n; i++) {
-        int loc = pLoc[i];
-        data[4*loc] = 1;
-        data[4*loc+1] = 0;
-        data[4*loc+2] = 0;
-        data[4*loc+3] = 1;
+    for (int i=0; i<numParticles; i++) {
+        int loc = 4 * pLoc[i];
+        for (int y=0; y<particleScale; y++) {
+            for (int x=0; x<particleScale; x++) {
+                int pos = loc + 4 * (y * imageWidth) + 4 * x;
+                data[pos] = 1;
+                data[pos+1] = 0;
+                data[pos+2] = 0;
+                data[pos+3] = 1;
+            }
+        }
     }
 
 }
