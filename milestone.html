@@ -1,0 +1,154 @@
+
+
+<!DOCTYPE html>
+<html>
+<title>Milestone</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+<style>
+body,h1,h2,h3,h4,h5 {font-family: "Raleway", sans-serif}
+</style>
+<body class="w3-light-grey">
+
+<!-- w3-content defines a container for fixed size centered content,
+and is wrapped around the whole page content, except for the footer in this example -->
+<div class="w3-content" style="max-width:1400px">
+
+<!-- Header -->
+<header class="w3-container w3-center w3-padding-32">
+  <h1><b> Parallelizing Maze Generation and Particle Filtering Milestone </b></h1>
+  <p> Milestone update from <span class="w3-tag">Utkarsh and Justin!</span></p>
+</header>
+
+<style>
+.grid {
+    margin-left: 225px;
+    margin-right: 225px;
+}
+
+.session-title {
+    display: inline;
+}
+</style>
+
+<!-- Grid -->
+<div class="w3-row grid">
+
+
+
+<!-- Blog entries -->
+<div class="w3-col w3-margin w3-padding s12">
+  <!-- Blog entry -->
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container">
+      <h3><b> Midpoint Summary </b></h3>
+    </div>
+
+    <div class="w3-container w3-large">
+        <p> We were able to generate particles sequentially and create a grid structure to update the maze with ease. We had alot of trouble renderering to a console using openGL on the gates machines (for MAC users it's a struggle) and so we have fallen behind schedule. The particle filtering sequential version is almost implemented (the math behind is a little difficult and we need to efficiently find line intersections). Anyway, a lot of work was put into structuring the files that made sense as we went through refractoring our code. We are now able to add walls and detect particle collisions. In the future, we plan to implement a robot in the maze that can determine it's location in the grid and figure it's way out. Instead of openMPI, we will most likely use CUDA because the data parallel model is more apt for a particle. (Utkarsh talk about graph) </p>
+    </div>
+  </div>
+  <hr>
+
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container w3-large">
+      <h3><b> Goals/Deliverables </b></h3>
+    </div>
+
+    <div class="w3-container w3-large">
+      <p> As mentioned in the summary, we are a bit behind schedule (due to our busy work schedules with other classes scheduling midterms/homework right before Thanksgiving Break). At the moment, we are on track to complete the sequential version of maze generation and particle filtering by the end of the week. The parallel version for particle filtering (CUDA) will be implemented the week after, with bugs sorted out. (Utkarsh talk about graph goals) By the project deadline, we plan to have a demo of parallel maze generation and particle filtering. Most likely there will plots of speedup on different cores.</p>
+    </div>
+  </div>
+  <hr>
+
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container w3-large">
+      <h3><b> Roadblocks (oh the struggles!)</b></h3>
+    </div>
+
+    <div class="w3-container w3-large">
+        <p> We hit some hiccups implementing parallel maze generation and particle filtering </p>
+        <br>
+      <div class="session session-1 track-1">
+        <h4 class="session-title"> <em> Rendering the console in openGL </em> </h4>
+        <li> We had a rough time creating a window that could be rendered on </li>
+      </div>
+        <br>
+      <div class="session session-1 track-1">
+        <h4 class="session-title"> <em> The math behind particle filtering is complex </em> </h4>
+        <li> took longer than expected to correctly implement. Here are the steps of particle filtering </li>
+        <li> 1) transition particles </li>
+        <li> 2) fire rays to intersect walls (this may have cool parallel implentations unbeknownst)</li>
+        <li> 3) reweight particles (particles with similar observations should be given higher probability that the robot exists there) </li>
+        <li> 4) resample particles based on their weight </li>
+        Steps 2-4 are still buggy.
+      </div>
+        <br>  
+      <div class="session session-1 track-1">
+        <h4 class="session-title"> <em> Makefile is hard to understand </em> </h4>
+        <li> Understanding how to write a makefile was painful because sometimes the files wouldn't link correctly </li>
+      </div>
+    </div>
+  </div>
+  <hr>
+
+
+  <div class="w3-card-4 w3-margin w3-white">
+    <div class="w3-container">
+      <h3><b> (Updated) Schedule </b></h3>
+
+        <div class="schedule">
+
+          <h3 class="time-slot">11/26</h3>
+          <div class="session session-1 track-1">
+            <h4 class="session-title"> Sequential Version of Graph/Particle Filtering fully implemented </h4>
+            <span class="session-presenter"> (Utkarsh/Justin) </span> <br>
+            <li> Bugs may still exist, but implemented thoroughly to move on </li>
+          </div>
+
+          <h3 class="time-slot">12/3</h3>
+          <div class="session session-1 track-1">
+            <h4 class="session-title"> CUDA version of Particle Filtering and openMP for maze generation </h4>
+            <span class="session-presenter"> (Utkarsh/Justin) </span> <br>
+            <li> Debugging bugs, if any.</li>
+          </div>
+
+          <h3 class="time-slot">12/10</h3>
+          <div class="session session-1 track-1">
+            <h4 class="session-title"> Performance tunning and Report Writing </h4>
+            <span class="session-presenter"> (Utkarsh/Justin) </span> <br>
+            <li> Using perfstat to improve performance and achieve high machine utilization</li>
+            <li> Finding the happy medium for the granularity of work </li>
+            <li> Write up the report. </li>
+          </div>
+
+        <br>
+        </div> <!-- end .schedule -->
+    </div>
+
+    <div class="w3-container w3-large">
+    </div>
+  </div>
+  <hr>
+
+<!-- END BLOG ENTRIES -->
+</div>
+
+
+<!-- END GRID -->
+</div><br>
+
+<!-- END w3-content -->
+</div>
+
+<!-- Footer -->
+<!-- Footer -->
+<footer class="w3-container w3-dark-grey w3-padding-32 w3-margin-top">
+  <a class="w3-button w3-black w3-padding-large w3-margin-bottom" href="./index.html" >Home »</a>
+</footer>
+
+</body>
+</html>
+
