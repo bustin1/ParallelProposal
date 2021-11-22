@@ -47,7 +47,7 @@ and is wrapped around the whole page content, except for the footer in this exam
     </div>
 
     <div class="w3-container w3-large">
-        <p> For our graph generation, we have managed to create a sequential version of the maze generator, based on a randomized version of the Kruskal's algorithm. However, it is far too slow, and doesn't always generate a path inside and outside of the maze. Moreover, we have yet to see if this is a good algorithm to optimize using the OpenMP, and hence, may change the algorithm. To avoid non-blocking the particle generator, we have created a few static grids for development and testing. <br/>
+        <p> For our graph generation, we have managed to create a sequential version of the maze generator, based on a randomized version of the Kruskal's algorithm. However, it is far too slow, and doesn't always generate a path inside and outside of the maze. Moreover, we have yet to see if this is a good algorithm to optimize using the OpenMP, and hence, may change the algorithm. To avoid non-blocking the particle generator, we have created a few static grids for development and testing. <br/> <br/>
         We were able to generate particles sequentially and create a grid structure to update the maze with ease. We had a lot of trouble renderering to a console using openGL on the gates machines (for MAC users it's a struggle) and so we have fallen behind schedule. The particle filtering sequential version is almost implemented (the math behind is a little difficult and we need to efficiently find line intersections). Anyway, a lot of work was put into structuring the files that made sense as we went through refractoring our code. We are now able to add walls and detect particle collisions. In the future, we plan to implement a robot in the maze that can determine it's location in the grid and figure it's way out. Instead of openMPI, we will most likely use CUDA because the data parallel model is more apt for a particle. 
          </p>
     </div>
@@ -92,6 +92,17 @@ and is wrapped around the whole page content, except for the footer in this exam
         <h4 class="session-title"> <em> Makefile is hard to understand </em> </h4>
         <li> Understanding how to write a makefile was painful because sometimes the files wouldn't link correctly </li>
       </div>
+      <div class="session session-1 track-1">
+        <h4 class="session-title"> <em> X11 Forwarding problems with Mac </em> </h4>
+        <li> We struggled immensenly with trying to setup the X11 forwarding with on one of our machines (Utkarsh uses Mac, Justin uses Linux). Specifically, the problems were: </li>
+        <li> 1. We were using CUDA libraries on the GHC machines, and we thought removing them temporarily might fix the forwarding issue.</li>
+         <li> 2. However, OpenGL started complaining about 'unsufficient resources', which again we backtraced to X11 forwarding.</li>
+        <li> 3. Utkarsh tried using the development environment locally, but again CUDA libraries could not installed on Mac successfully.</li>
+        <li> 4. Finally, we tried to work on a VM on Mac, however the VirtualBox failed, and had to be re-installed and re-configured.</li>
+        <li> 5. We're still trying to fix the VM, which isn't working correctly inside the VirtualBox. </li>
+        <li> 6. As such, we've had to do development on the Mac, and test on one single machine (Justin's linux). We plan to either fix up the environment issues by this week, or Utkarsh will work from GHC clusters. </li>
+      </div>
+        <br>
     </div>
   </div>
   <hr>
