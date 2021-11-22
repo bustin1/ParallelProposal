@@ -47,7 +47,9 @@ and is wrapped around the whole page content, except for the footer in this exam
     </div>
 
     <div class="w3-container w3-large">
-        <p> We were able to generate particles sequentially and create a grid structure to update the maze with ease. We had alot of trouble renderering to a console using openGL on the gates machines (for MAC users it's a struggle) and so we have fallen behind schedule. The particle filtering sequential version is almost implemented (the math behind is a little difficult and we need to efficiently find line intersections). Anyway, a lot of work was put into structuring the files that made sense as we went through refractoring our code. We are now able to add walls and detect particle collisions. In the future, we plan to implement a robot in the maze that can determine it's location in the grid and figure it's way out. Instead of openMPI, we will most likely use CUDA because the data parallel model is more apt for a particle. (Utkarsh talk about graph) </p>
+        <p> For our graph generation, we have managed to create a sequential version of the maze generator, based on a randomized version of the Kruskal's algorithm. However, it is far too slow, and doesn't always generate a path inside and outside of the maze. Moreover, we have yet to see if this is a good algorithm to optimize using the OpenMP, and hence, may change the algorithm. To avoid non-blocking the particle generator, we have created a few static grids for development and testing. <br/>
+        We were able to generate particles sequentially and create a grid structure to update the maze with ease. We had a lot of trouble renderering to a console using openGL on the gates machines (for MAC users it's a struggle) and so we have fallen behind schedule. The particle filtering sequential version is almost implemented (the math behind is a little difficult and we need to efficiently find line intersections). Anyway, a lot of work was put into structuring the files that made sense as we went through refractoring our code. We are now able to add walls and detect particle collisions. In the future, we plan to implement a robot in the maze that can determine it's location in the grid and figure it's way out. Instead of openMPI, we will most likely use CUDA because the data parallel model is more apt for a particle. 
+         </p>
     </div>
   </div>
   <hr>
@@ -58,7 +60,7 @@ and is wrapped around the whole page content, except for the footer in this exam
     </div>
 
     <div class="w3-container w3-large">
-      <p> As mentioned in the summary, we are a bit behind schedule (due to our busy work schedules with other classes scheduling midterms/homework right before Thanksgiving Break). At the moment, we are on track to complete the sequential version of maze generation and particle filtering by the end of the week. The parallel version for particle filtering (CUDA) will be implemented the week after, with bugs sorted out. (Utkarsh talk about graph goals) By the project deadline, we plan to have a demo of parallel maze generation and particle filtering. Most likely there will plots of speedup on different cores.</p>
+      <p> As mentioned in the summary, we are a bit behind schedule (due to our busy work schedules with other classes scheduling midterms/homework right before Thanksgiving Break). At the moment, we are on track to complete the sequential version of maze generation and particle filtering by the end of the week. The parallel version for particle filtering (CUDA) will be implemented the week after, with bugs sorted out. For the graph, we will experiment with other algorithms, and choose one that has the highest likelihood of being a good parallel target. By the project deadline, we plan to have a demo of parallel maze generation and particle filtering. Most likely there will plots of speedup on different cores.</p>
     </div>
   </div>
   <hr>
