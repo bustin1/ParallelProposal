@@ -7,14 +7,15 @@
 
 #include "refRenderer.h"
 #include "grid.h"
+#include "util.h"
 
 
-RefRenderer::RefRenderer(Pfilter* f, int s) {
+RefRenderer::RefRenderer(Pfilter* f) {
     filter = f;
     Grid* grid = filter->getGrid();
     int w = grid->width;
     int h = grid->height;
-    scale = s;
+    int scale = filter->get_grid_scale();
     image = new Image(w * scale, h * scale);
 
 
@@ -33,7 +34,8 @@ const Image* RefRenderer::getImage() {
 
 void RefRenderer::clearImage() {
     Grid* grid = filter->getGrid();
-    image->clear(grid, scale);
+    int scale = filter->get_grid_scale();
+    image->clear(grid, scale, to_grid);
 }
 
 void RefRenderer::advanceAnimation() {

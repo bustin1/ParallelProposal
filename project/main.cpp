@@ -32,22 +32,23 @@ int main(int argc, char *argv[]) {
         return -1; 
     }
 
-    const int w = 50;
-    const int h = 50;
-    const int scale = 20; // 20 pixels per grid element
-    const int n = 50000; // 50 particles
+    const int w = 3;
+    const int h = 3;
+    const int gridScale = 100; // 20 pixels per grid element
+    const int particleScale= 2; // width x height of particle
+    const int numParticles = 10; // 50 particles
 
     srand(time(NULL));
 
     Grid* grid = new Grid(w, h);
     grid->clear();
-    grid->create_simple_layout();
+//    grid->create_simple_layout();
 //    grid->create_checkered_layout();
-//    grid->create_bullseye_layout(0,0);
+    grid->create_bullseye_layout(1,1);
 
-    Pfilter* filter = new Pfilter(grid, n, scale);
+    Pfilter* filter = new Pfilter(grid, numParticles, gridScale, particleScale);
 
-    RefRenderer* renderer = new RefRenderer(filter, scale);
+    RefRenderer* renderer = new RefRenderer(filter);
 
     renderer->dumpWalls(outputFilename);
     glutInit(&argc, argv);

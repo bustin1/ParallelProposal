@@ -6,6 +6,12 @@
 
 typedef int Wall;
 
+/*
+ * The grid struct should only know it's grid map. It should be able to check
+ * whether a wall exists, as well as creating walls, and calculating open
+ * space in the grid
+ */
+
 struct Grid {
 
     Grid(int w, int h) {
@@ -42,7 +48,6 @@ struct Grid {
         }
 
         open = new int[num_open];
-        // calc_num_open();
     }
 
     void create_simple_layout() {
@@ -60,7 +65,6 @@ struct Grid {
         walls[width+1] = 1;
 
         open = new int[num_open-1];
-        // calc_num_open();
     }
 
     // call these functions to initlize the grid;
@@ -76,9 +80,9 @@ struct Grid {
         walls[y*width+x] = 0;
 
         open = new int[num_open];
-        // calc_num_open();
     }
 
+    // this must be called before random sampling
     void calc_num_open() {
         int gridSize = width*height;
         int j = 0;
@@ -89,14 +93,6 @@ struct Grid {
         }
     }
 
-    int to_img(int i, int scale) {
-        int x = i % width;
-        int y = i / width;
-        int ix = x * scale;
-        int iy = y * scale;
-        int j = iy*width*scale + ix;
-        return j;
-    }
 
     Wall* walls;
     int* open;

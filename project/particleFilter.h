@@ -10,15 +10,23 @@ class Pfilter {
 private:
 
     Grid* grid;
+
+    const int numRays;
+
     int numParticles;
-    int scale;
+    int gridScale;
+    int particleScale;
     int* particleLocations;
+
+    // unseen helper functions
     void transition();
+    void fireray();
+    void reweight();
 
 
 public:
 
-    Pfilter(Grid* grid, int numParticles, int scale);
+    Pfilter(Grid* grid, int numParticles, int scale, int particleSize);
 
     Grid* getGrid();
 
@@ -31,6 +39,10 @@ public:
     int get_numParticles();
     
     int* get_particleLocations();
+    
+    int get_grid_scale();
+
+    int get_particle_scale();
 
 };
 
