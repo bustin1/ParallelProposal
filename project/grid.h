@@ -103,7 +103,6 @@ struct Grid {
         for (int i=0; i<gridSize; i++) {
             if (walls[i] == 1){
                 closed[j++] = i;
-                printf("i is %d\n", i);
             }
         }
     }

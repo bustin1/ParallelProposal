@@ -6,7 +6,7 @@
 #include "platformgl.h"
 #include "refRenderer.h"
 
-#define DEBUG true
+#include "debug.h"
 
 
 void renderPicture();

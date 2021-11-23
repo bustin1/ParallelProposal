@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <time.h>
 
+#include "robot.h"
+
 #include "refRenderer.h"
 #include "grid.h"
 #include "particleFilter.h"
@@ -36,7 +38,7 @@ int main(int argc, char *argv[]) {
     const int h = 3;
     const int gridScale = 100; // 20 pixels per grid element
     const int particleScale= 3; // width x height of particle
-    const int numParticles = 10; // 50 particles
+    const int numParticles = 2; // 50 particles
 
     srand(time(NULL));
 
@@ -46,7 +48,8 @@ int main(int argc, char *argv[]) {
 //    grid->create_checkered_layout();
     grid->create_bullseye_layout(1,1);
 
-    Pfilter* filter = new Pfilter(grid, numParticles, gridScale, particleScale);
+    Robot* robot = new Robot(grid, gridScale, 150 * 300 + 150);
+    Pfilter* filter = new Pfilter(robot, grid, numParticles, gridScale, particleScale);
 
     RefRenderer* renderer = new RefRenderer(filter);
 

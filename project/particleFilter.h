@@ -4,31 +4,43 @@
 
 #include "grid.h"
 #include "image.h"
+#include "robot.h"
 
 class Pfilter {
 
 private:
 
     Grid* grid;
+    Robot* robot;
 
     const int numRays;
+    const int maxRayLen;
 
     int numParticles;
     int gridScale;
     int particleScale;
+    int goal;
     int* particleLocations;
+    double* particleOrientations;
     int* rays;
+    int particleGuess;
+    double* weights;
 
     // unseen helper functions
+    void best_particle();
     void transition();
-    void firerays(int loc, int *ray);
+    void firerays(int loc, int *ptr, double angle_bias);
     void reweight();
-    int getIntersection(int loc, double angle);
+    void sample();
+    int getSingleIntersection(int x1, int y1, int x2, int y2,
+                                   int x3, int y3, int x4, int y4);
+    int getClosestIntersection(int loc, double angle);
+
 
 
 public:
 
-    Pfilter(Grid* grid, int numParticles, int scale, int particleSize);
+    Pfilter(Robot* robot, Grid* grid, int numParticles, int scale, int particleSize);
 
     Grid* get_grid();
 
