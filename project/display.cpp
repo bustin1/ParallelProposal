@@ -6,6 +6,7 @@
 #include "platformgl.h"
 #include "refRenderer.h"
 
+#define DEBUG true
 
 
 void renderPicture();
@@ -43,7 +44,7 @@ void handleDisplay() {
     // the subsequent code uses OpenGL to present the state of the
     // rendered image on the screen.
 
-    const Image* img = gDisplay.renderer->getImage();
+    const Image* img = gDisplay.renderer->get_image();
 
     int width = std::min(img->width, gDisplay.width);
     int height = std::min(img->height, gDisplay.height);
@@ -65,8 +66,37 @@ void handleDisplay() {
     // would render to a CUDA surface object (stored in GPU memory),
     // and then bind this surface as a texture enabling it's use in
     // normal openGL rendering
+
+
     glRasterPos2i(0, 0);
     glDrawPixels(width, height, GL_RGBA, GL_FLOAT, img->data);
+    if (DEBUG) {
+
+        glColor3f(0, 1, 0);
+
+        // draw rays (only debugging though)
+        Pfilter* filter = gDisplay.renderer->get_filter();
+        int numParticles = filter->get_num_particles();
+        int numRays = filter->get_num_rays();
+        int* pLoc = filter->get_particle_locations();
+        int imageWidth = img->width;
+        int* rays = filter->get_rays();
+
+        for (int i=0; i<numParticles; i++) {
+            int loc = pLoc[i];
+            int x1 = loc % imageWidth;
+            int y1 = loc / imageWidth;
+            for (int j=0; j<numRays; j++) {
+                int x2 = rays[i*numRays+j] % imageWidth;
+                int y2 = rays[i*numRays+j] / imageWidth;
+                glBegin(GL_LINES);
+                    glVertex2f(x1, y1);
+                    glVertex2f(x2, y2);
+                glEnd();
+            }
+        }
+    }
+
 
     double currentTime = CycleTimer::currentSeconds();
 
@@ -141,7 +171,7 @@ void startRendererWithDisplay(RefRenderer* renderer) {
 
     // setup the display
 
-    const Image* img = renderer->getImage();
+    const Image* img = renderer->get_image();
 
     gDisplay.renderer = renderer;
     gDisplay.updateSim = true;

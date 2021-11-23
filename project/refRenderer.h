@@ -25,7 +25,9 @@ public:
     RefRenderer(Pfilter* filter);
     virtual ~RefRenderer();
 
-    const Image* getImage();
+    const Image* get_image();
+
+    Pfilter* get_filter();
 
     void setup();
 

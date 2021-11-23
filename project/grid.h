@@ -48,6 +48,7 @@ struct Grid {
         }
 
         open = new int[num_open];
+        closed = new int[width*height-num_open];
     }
 
     void create_simple_layout() {
@@ -64,7 +65,8 @@ struct Grid {
         }
         walls[width+1] = 1;
 
-        open = new int[num_open-1];
+        open = new int[num_open];
+        closed = new int[width*height-num_open];
     }
 
     // call these functions to initlize the grid;
@@ -80,6 +82,7 @@ struct Grid {
         walls[y*width+x] = 0;
 
         open = new int[num_open];
+        closed = new int[width*height-num_open];
     }
 
     // this must be called before random sampling
@@ -93,9 +96,22 @@ struct Grid {
         }
     }
 
+    // calc num of walls
+    void calc_num_closed() {
+        int gridSize = width*height;
+        int j = 0;
+        for (int i=0; i<gridSize; i++) {
+            if (walls[i] == 1){
+                closed[j++] = i;
+                printf("i is %d\n", i);
+            }
+        }
+    }
+
 
     Wall* walls;
     int* open;
+    int* closed;
     int width;
     int height;
     int num_open;

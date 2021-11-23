@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     const int w = 3;
     const int h = 3;
     const int gridScale = 100; // 20 pixels per grid element
-    const int particleScale= 2; // width x height of particle
+    const int particleScale= 3; // width x height of particle
     const int numParticles = 10; // 50 particles
 
     srand(time(NULL));

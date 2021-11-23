@@ -10,9 +10,10 @@
 #include "util.h"
 
 
+
 RefRenderer::RefRenderer(Pfilter* f) {
     filter = f;
-    Grid* grid = filter->getGrid();
+    Grid* grid = filter->get_grid();
     int w = grid->width;
     int h = grid->height;
     int scale = filter->get_grid_scale();
@@ -27,13 +28,17 @@ RefRenderer::~RefRenderer() {
     }
 }
 
-const Image* RefRenderer::getImage() {
+const Image* RefRenderer::get_image() {
     return image;
+}
+
+Pfilter* RefRenderer::get_filter() {
+    return filter;
 }
 
 
 void RefRenderer::clearImage() {
-    Grid* grid = filter->getGrid();
+    Grid* grid = filter->get_grid();
     int scale = filter->get_grid_scale();
     image->clear(grid, scale, to_grid);
 }
@@ -42,10 +47,11 @@ void RefRenderer::advanceAnimation() {
     filter->update();
 }
 
+
 void RefRenderer::render() {
     float* data = image->data;
-    int* pLoc = filter->get_particleLocations();
-    int numParticles = filter->get_numParticles();
+    int* pLoc = filter->get_particle_locations();
+    int numParticles = filter->get_num_particles();
     int particleScale = filter->get_particle_scale();
     int imageWidth = image->width;
 
@@ -68,7 +74,7 @@ void RefRenderer::render() {
 void RefRenderer::dumpWalls(const char* filename) {
     FILE* output = fopen(filename, "w");
     
-    Grid* grid = filter->getGrid();
+    Grid* grid = filter->get_grid();
     int w = grid->width;
     int h = grid->height;
     fprintf(output, "%d %d\n", w, h);
