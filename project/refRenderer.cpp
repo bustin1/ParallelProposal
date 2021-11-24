@@ -11,7 +11,7 @@
 
 
 
-RefRenderer::RefRenderer(Pfilter* f) {
+RefRenderer::RefRenderer(Pfilter* f) : goalScale (3){
     filter = f;
     Grid* grid = filter->get_grid();
     int w = grid->width;
@@ -66,6 +66,34 @@ void RefRenderer::render() {
                 data[pos+2] = 0;
                 data[pos+3] = 1;
             }
+        }
+    }
+
+    int goal = filter->get_goal() * 4;
+
+    // set location of goal
+    
+    for (int y=0; y<particleScale*goalScale; y++) {
+        for (int x=0; x<particleScale*goalScale; x++) {
+            int pos = goal + 4 * (y * imageWidth) + 4 * x;
+            data[pos] = 1;
+            data[pos+1] = 0;
+            data[pos+2] = 0;
+            data[pos+3] = 1;
+        }
+    }
+
+    // TODO: if debug
+    Robot* robot = filter->get_robot();
+    int robotScale = robot->get_scale();
+    int robopos = robot->get_pos() * 4;
+    for (int y=-robotScale/2; y<robotScale/2; y++) {
+        for (int x=-robotScale/2; x<robotScale/2; x++) {
+            int pos = robopos + 4 * (y * imageWidth) + 4 * x;
+            data[pos] = 0;
+            data[pos+1] = 0;
+            data[pos+2] = 1;
+            data[pos+3] = 1;
         }
     }
 

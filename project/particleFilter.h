@@ -27,7 +27,7 @@ private:
     double* weights;
 
     // unseen helper functions
-    void best_particle();
+    void find_next_step(double& dtheta, double& speed, double theta);
     void transition();
     void firerays(int loc, int *ptr, double angle_bias);
     void reweight();
@@ -57,10 +57,14 @@ public:
     int* get_rays();
     
     int get_num_rays();
+
+    int get_goal();
     
     int get_grid_scale();
 
     int get_particle_scale();
+
+    Robot* get_robot();
 
 };
 

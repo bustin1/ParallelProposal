@@ -14,9 +14,20 @@ typedef int Wall;
 
 struct Grid {
 
+    Grid() {
+    }
+
     Grid(int w, int h) {
         width = w;
         height = h;
+        walls = new int[w*h]; // 1 means wall, 0 other wise
+        num_open = w*h;
+    }
+
+    void set_dim(int w, int h) {
+        width = w;
+        height = h;
+        if (walls) delete walls;
         walls = new int[w*h]; // 1 means wall, 0 other wise
         num_open = w*h;
     }
@@ -58,18 +69,18 @@ struct Grid {
             walls[(height-1)*width + c] = 1;
             num_open -= 2;
         }
-        for (int r=0; r<height; r++) {
+        for (int r=1; r<height-1; r++) {
             walls[r * width] = 1;
             walls[r * width + width-1] = 1;
             num_open -= 2;
         }
         walls[width+1] = 1;
+        num_open --;
 
         open = new int[num_open];
         closed = new int[width*height-num_open];
     }
 
-    // call these functions to initlize the grid;
     void create_bullseye_layout(int x, int y) {
 
         for (int r=0; r<height; r++) {
@@ -83,6 +94,37 @@ struct Grid {
 
         open = new int[num_open];
         closed = new int[width*height-num_open];
+    }
+
+    void create_simple_maze_layout() {
+
+        for (int r=0; r<height; r++) {
+            for (int c=0; c<width; c++) {
+                if (r != height/2 || c == 0 || c == width-1) {
+                    walls[r*width + c] = 1;
+                    num_open--;
+                }
+            }
+        }
+        num_open++;
+        walls[width + width/2] = 0;
+
+        open = new int[num_open];
+        closed = new int[width*height-num_open];
+    }
+
+    void create_maze_from_file(int* grid) {
+
+        for (int r=0; r<height; r++) {
+            for (int c=0; c<width; c++) {
+                int wall = grid[r*width + c];
+                walls[r*width + c] = wall;
+                num_open -= wall;
+            }
+        }
+        open = new int[num_open];
+        closed = new int[width*height-num_open];
+
     }
 
     // this must be called before random sampling

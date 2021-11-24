@@ -17,43 +17,80 @@ void startRendererWithDisplay(RefRenderer* renderer);
 
 int main(int argc, char *argv[]) {
 
-    char* outputFilename = NULL;
+    char* inputFilename = NULL;
+    bool help = false;
     int opt = 0;
 
     do {
-        opt = getopt(argc, argv, "f:");
+        opt = getopt(argc, argv, "i:h:");
         switch(opt) {
-        case 'f':
-            outputFilename = optarg;
+        case 'i':
+            inputFilename = optarg;
             break;
+        case 'h':
+            help = true;
         }
     } while (opt != -1);
 
-    if (outputFilename == NULL) {
-        printf("Usage: %s -f <filename>\n", argv[0]);
+    if (help) {
+        printf("Usage: %s -i <filename>\n", argv[0]);
         return -1; 
     }
 
-    const int w = 3;
-    const int h = 3;
-    const int gridScale = 100; // 20 pixels per grid element
+    FILE* fin = NULL;
+    if (inputFilename != NULL) {
+        printf("reading file: %s ...\n", inputFilename);
+        fin = fopen(inputFilename, "r");
+    }
+    
+
+    int w = 6;
+    int h = 4;
+
+    Grid* grid = new Grid();
+    grid->clear();
+
+    if (fin == NULL) {
+        if (inputFilename != NULL) {
+            printf("WARNING: Unable to read file: %s ... moving on\n", inputFilename);
+            return -1;
+        }
+        printf("No file specified :(\n");
+        grid->set_dim(w, h);
+//    grid->create_simple_layout();
+//    grid->create_checkered_layout();
+//    grid->create_bullseye_layout(1,1);
+        grid->create_simple_maze_layout();
+    } else {
+        fscanf(fin, "%d %d\n", &w, &h);
+        int* tmp_grid = new int[w * h];
+        for (int r=0; r<h; r++) {
+            for (int c=0; c<w; c++) {
+                int v;
+                fscanf(fin, "%d", &v);
+                tmp_grid[r*w+c] = v;
+            }
+        }
+        grid->set_dim(w, h);
+        grid->create_maze_from_file(tmp_grid);
+        delete tmp_grid;
+        fclose(fin);
+    }
+
+
+
+    const int gridScale = 50; // 20 pixels per grid element
     const int particleScale= 3; // width x height of particle
-    const int numParticles = 2; // 50 particles
+    const int numParticles = 5000; // 50 particles
 
     srand(time(NULL));
 
-    Grid* grid = new Grid(w, h);
-    grid->clear();
-//    grid->create_simple_layout();
-//    grid->create_checkered_layout();
-    grid->create_bullseye_layout(1,1);
-
-    Robot* robot = new Robot(grid, gridScale, 150 * 300 + 150);
+    Robot* robot = new Robot(grid, gridScale, 150 + (int) (250 * gridScale * w));
     Pfilter* filter = new Pfilter(robot, grid, numParticles, gridScale, particleScale);
 
     RefRenderer* renderer = new RefRenderer(filter);
 
-    renderer->dumpWalls(outputFilename);
+//    renderer->dumpWalls(outputFilename);
     glutInit(&argc, argv);
     startRendererWithDisplay(renderer);
 

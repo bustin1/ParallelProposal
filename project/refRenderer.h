@@ -19,6 +19,7 @@ private:
 
     Pfilter* filter;
     Image* image;
+    const int goalScale;
 
 public:
 
