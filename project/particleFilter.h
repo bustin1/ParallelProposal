@@ -27,6 +27,9 @@ private:
     double* weights;
     int sample_counter;
     int sampling_pos_variance;
+    int robotHitWall;
+    int maxNumParticles;
+    bool i_am_speed;
 
     // unseen helper functions
     void find_next_step(double& dtheta, double& speed, double theta);
@@ -37,6 +40,8 @@ private:
     int getSingleIntersection(int x1, int y1, int x2, int y2,
                                    int x3, int y3, int x4, int y4);
     int getClosestIntersection(int loc, double angle);
+    void uniform_sample();
+    bool confidence(float param);
 
 
 

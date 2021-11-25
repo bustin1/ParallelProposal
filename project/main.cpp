@@ -80,11 +80,11 @@ int main(int argc, char *argv[]) {
 
     const int gridScale = 25; // 20 pixels per grid element
     const int particleScale= 3; // width x height of particle
-    const int numParticles = 10000; // 50 particles
+    const int numParticles = 1000; // 50 particles
 
     srand(time(NULL));
 
-    Robot* robot = new Robot(grid, gridScale, 0, 0);
+    Robot* robot = new Robot(grid, gridScale);
     Pfilter* filter = new Pfilter(robot, grid, numParticles, gridScale, particleScale);
 
     RefRenderer* renderer = new RefRenderer(filter);

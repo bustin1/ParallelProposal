@@ -16,6 +16,7 @@ private:
     float speed;
     double angle;
     int robotScale;
+    int numRays;
     int* rays;
 
 
@@ -29,7 +30,9 @@ public:
 
     float get_speed();
 
-    void move(double dtheta, double speed);
+    bool move(double dtheta, double speed);
+
+    void move_greedy(double& dtheta, double speed);
 
     float get_yaw_rate();
 
@@ -48,6 +51,8 @@ public:
     void init_rays(const int);
 
     int* get_rays();
+
+    void print_stuff();
 
 };
 

@@ -19,5 +19,6 @@ std::vector<int> bfs(int start, int goal, Grid* grid);
 double clamp(double value, double threshold);
 double double_mod(double value, double threshold);
 void print_stats(int pos, int imgWidth, double angle, const char* name);
+double dist2d(int p1, int p2, int imgWidth);
 
 #endif

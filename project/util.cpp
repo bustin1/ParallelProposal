@@ -75,9 +75,10 @@ double gaussian2d(int mean, int imgWidth, double variance) {
 }
 
 
-// start and goal and image locations, NOT grid locations
-std::vector<int> bfs(int start, int goal, Grid* grid)
-{
+// TODO: parallelisze this?
+// start and goal and image are grid locations
+std::vector<int> bfs(int start, int goal, Grid* grid) {
+
     int gridSize = grid->width * grid->height;
     std::queue<std::vector<int> > q;
     std::vector<bool> visited(gridSize, false);
@@ -138,6 +139,17 @@ void print_stats(int pos, int imgWidth, double angle, const char* name) {
 }
 
 
+double dist2d(int p1, int p2, int imgWidth) {
+
+    int x1 = p1 % imgWidth;
+    int y1 = p1 / imgWidth;
+    
+    int x2 = p2 % imgWidth;
+    int y2 = p2 / imgWidth;
+
+    return sqrt(pow(x1-x2, 2) + pow(y1-y2, 2));
+
+}
 
 
 
