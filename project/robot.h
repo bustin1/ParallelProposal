@@ -16,13 +16,16 @@ private:
     float speed;
     double angle;
     int robotScale;
+    int* rays;
 
 
 public:
 
     Robot(Grid* grid, int gscale); // for random position
 
-    Robot(Grid* grid, int gscale, int pos);
+    virtual ~Robot();
+
+    Robot(Grid* grid, int gscale, int pos, double angle);
 
     float get_speed();
 
@@ -41,6 +44,10 @@ public:
     int get_y(int width);
 
     void set_pose(int p, double a);
+
+    void init_rays(const int);
+
+    int* get_rays();
 
 };
 

@@ -25,6 +25,8 @@ private:
     int* rays;
     int particleGuess;
     double* weights;
+    int sample_counter;
+    int sampling_pos_variance;
 
     // unseen helper functions
     void find_next_step(double& dtheta, double& speed, double theta);
@@ -63,6 +65,8 @@ public:
     int get_grid_scale();
 
     int get_particle_scale();
+
+    int get_best_particle();
 
     Robot* get_robot();
 

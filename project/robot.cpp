@@ -12,13 +12,27 @@ Robot::Robot(Grid* g, int gscale) : yawRate (.25), robotScale (10) {
 }
 
 
-Robot::Robot(Grid* g, int gscale, int p) : yawRate (.25), robotScale (10) {
+Robot::Robot(Grid* g, int gscale, int p, double a) : yawRate (.25), robotScale (10) {
     grid = g;
     pos = p;
     gridScale = gscale;
-    angle = 0; // TODO: randomize angle, remove p from arguments
+    angle = a; // TODO: randomize angle, remove p from arguments
 }
 
+Robot::~Robot() {
+    printf("deleting robot beep boop ...");
+    if (rays) {
+        delete rays;
+    }
+}
+
+void Robot::init_rays(const int numRays) {
+    rays = new int[numRays];
+}
+
+int* Robot::get_rays() {
+    return rays;
+}
 
 int Robot::get_pos() {
     return pos;
@@ -70,20 +84,10 @@ void Robot::move(double dtheta, double speed) {
     int candidate_y = round(ry + dirY);
 
     int candidate_pos = candidate_x+imgWidth*candidate_y;
-    int candidate_pos_x = rx+imgWidth*candidate_y;
-    int candidate_pos_y = candidate_x+imgWidth*ry;
 
     // if hit wall, don't move 
     if (!grid->is_wall_at(to_grid(imgWidth, candidate_pos, gridScale))) {
         loc = candidate_pos;  
-    } else if (!grid->is_wall_at(to_grid(imgWidth, candidate_pos_x, gridScale))) {
-        loc = candidate_pos_x;
-        if (candidate_pos_x < rx) candidate_angle = 180;
-        if (candidate_pos_x > rx) candidate_angle = 0;
-    } else if (!grid->is_wall_at(to_grid(imgWidth, candidate_pos_y, gridScale))) {
-        loc = candidate_pos_y;
-        if (candidate_pos_y < ry) candidate_angle = 270;
-        if (candidate_pos_y > ry) candidate_angle = 90;
     }
 
     angle = candidate_angle;

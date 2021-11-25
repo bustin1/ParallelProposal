@@ -48,7 +48,6 @@ int main(int argc, char *argv[]) {
     int h = 4;
 
     Grid* grid = new Grid();
-    grid->clear();
 
     if (fin == NULL) {
         if (inputFilename != NULL) {
@@ -73,26 +72,26 @@ int main(int argc, char *argv[]) {
         }
         grid->set_dim(w, h);
         grid->create_maze_from_file(tmp_grid);
-        delete tmp_grid;
+        delete[] tmp_grid;
         fclose(fin);
     }
 
 
 
-    const int gridScale = 50; // 20 pixels per grid element
+    const int gridScale = 25; // 20 pixels per grid element
     const int particleScale= 3; // width x height of particle
-    const int numParticles = 5000; // 50 particles
+    const int numParticles = 10000; // 50 particles
 
     srand(time(NULL));
 
-    Robot* robot = new Robot(grid, gridScale, 150 + (int) (250 * gridScale * w));
+    Robot* robot = new Robot(grid, gridScale, 0, 0);
     Pfilter* filter = new Pfilter(robot, grid, numParticles, gridScale, particleScale);
 
     RefRenderer* renderer = new RefRenderer(filter);
 
-//    renderer->dumpWalls(outputFilename);
     glutInit(&argc, argv);
     startRendererWithDisplay(renderer);
+
 
 
     return 0;

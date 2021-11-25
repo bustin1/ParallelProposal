@@ -22,6 +22,7 @@ struct Grid {
         height = h;
         walls = new int[w*h]; // 1 means wall, 0 other wise
         num_open = w*h;
+        clear();
     }
 
     void set_dim(int w, int h) {
@@ -118,7 +119,7 @@ struct Grid {
         for (int r=0; r<height; r++) {
             for (int c=0; c<width; c++) {
                 int wall = grid[r*width + c];
-                walls[r*width + c] = wall;
+                walls[(height-1-r)*width + c] = wall;
                 num_open -= wall;
             }
         }

@@ -4,6 +4,7 @@
 #include <math.h>
 #include <bits/stdc++.h>
 #include "util.h"
+#include "grid.h"
 
 
 
@@ -103,7 +104,7 @@ std::vector<int> bfs(int start, int goal, Grid* grid)
                     int y = (lastNode) / grid->width + r;
                     int neighbor = y*grid->width + x;
 
-                    if (!visited[neighbor]) {
+                    if (neighbor >= 0 && neighbor < gridSize && !visited[neighbor]) {
                         if (!grid->is_wall_at(neighbor)) {
                             std::vector<int> copy = nextpath; // create a copy of the original path
                             copy.push_back(neighbor);

@@ -82,7 +82,11 @@ void handleDisplay() {
         int imageWidth = img->width;
         int* rays = filter->get_rays();
 
+
         for (int i=0; i<numParticles; i++) {
+            if (DEBUG == 2) {
+                i = filter->get_best_particle();
+            }
             int loc = pLoc[i];
             int x1 = loc % imageWidth;
             int y1 = loc / imageWidth;
@@ -94,6 +98,23 @@ void handleDisplay() {
                     glVertex2f(x2, y2);
                 glEnd();
             }
+            if (DEBUG == 2) {
+                break;
+            }
+        }
+
+        glColor3f(1, 0, 1);
+        Robot* robot = filter->get_robot();
+        int* roboRays = robot->get_rays();
+        int x1 = robot->get_x(imageWidth);
+        int y1 = robot->get_y(imageWidth);
+        for (int j=0; j<numRays; j++) {
+            int x2 = roboRays[j] % imageWidth;
+            int y2 = roboRays[j] / imageWidth;
+            glBegin(GL_LINES);
+                glVertex2f(x1, y1);
+                glVertex2f(x2, y2);
+            glEnd();
         }
 
     }
