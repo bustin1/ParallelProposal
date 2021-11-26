@@ -27,7 +27,7 @@ double rand_angle();
 
 std::vector<int> bfs(int start, int goal, Grid* grid);
 
-void print_stats(int pos, int imgWidth, double angle, const char* name);
+void print_stats(int pos, int imgWidth, int gridScale, double angle, const char* name);
 void print_loc(char* function_name, int pos, int width);
 
 #endif

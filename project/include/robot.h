@@ -21,6 +21,8 @@ private:
     double speed;
     double angle;
 
+    bool hitWall;
+
     const double yawRate; // how fast the robot can turn per frame (in radians)
 
     int* rays;
@@ -36,7 +38,7 @@ public:
     void set_pose(int p, double a);
     void init(const int rays, Grid* grid, int gridScale);
     void print_stuff();
-    void update_visited_states();
+    void update_visited_states(int pos);
     void init(const int numRays, 
                  Grid* grid, 
                  const int gridScale,

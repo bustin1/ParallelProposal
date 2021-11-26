@@ -27,6 +27,7 @@ void Robot::init(const int numRays,
     this->rays = new int[numRays];
     this->grid = grid;
     this->robotScale = gridScale / 5; // heuristic?
+    this->hitWall = false;
 
     int gridSize = grid->num_closed + grid->num_open;
     this->visitedStates = new bool[gridSize];
@@ -70,14 +71,13 @@ void Robot::set_pose(int pos, double angle) {
 }
 
 
-void Robot::update_visited_states() {
-    int gPos = to_grid(this->imgWidth, this->pos, this->gridScale);
+void Robot::update_visited_states(int pos) {
+    int gPos = to_grid(this->imgWidth, pos, this->gridScale);
     visitedStates[gPos] = true;
 }
 
 bool Robot::visited(int rayPos) {
-
-    int gPos = to_grid(this->imgWidth, rayPos-this->imgWidth*2, this->gridScale);
+    int gPos = to_grid(this->imgWidth, rayPos, this->gridScale);
     return visitedStates[gPos];
 }
 
@@ -96,13 +96,17 @@ bool Robot::move(double dtheta, double speed) {
     int candidate_x = round(rx + dirX);
     int candidate_y = round(ry + dirY);
 
-    int candidate_pos = candidate_x+this->imgWidth*candidate_y;
+    int candidate_pos = candidate_x + this->imgWidth*candidate_y;
 
     this->angle = candidate_angle;
 
     if (!grid->is_wall_at(to_grid(this->imgWidth, candidate_pos, this->gridScale))) {
+        int prev = to_grid(this->imgWidth, this->pos, this->gridScale);
+        int next= to_grid(this->imgWidth, candidate_pos, this->gridScale);
+        if (prev != next) {
+            update_visited_states(this->pos);
+        }
         this->pos = candidate_pos;
-        update_visited_states();
         return false;
     }
     
@@ -114,50 +118,55 @@ bool Robot::move(double dtheta, double speed) {
 
 void Robot::move_greedy(double& dtheta, double& speed) {
 
+
     int bestRayInd = 0;
     double maxRayLen = 0;
 
-    // 1) find best ray
-    for (int i=0; i<this->numRays; i++) {
-
-        double rayLen = dist2d(this->rays[i], this->get_pos(), this->imgWidth);
-
-        // need to interpolate to the weird bug with line intersections
-        int ray = interpolate(this->get_pos(), this->rays[i], this->imgWidth, .95);
-
-        if (maxRayLen < rayLen && !this->visited(ray)) {
-            bestRayInd = i;
-            maxRayLen = rayLen;
-        }
-    }
-
-    if (maxRayLen == 0) {
+    if (hitWall) {
+        // 1) find best ray
         for (int i=0; i<this->numRays; i++) {
+
             double rayLen = dist2d(this->rays[i], this->get_pos(), this->imgWidth);
-            if (maxRayLen < rayLen) {
+
+            // need to interpolate to the weird bug with line intersections
+            int ray = interpolate(this->get_pos(), this->rays[i], this->imgWidth, .95);
+
+            if (maxRayLen < rayLen && !this->visited(ray)) {
                 bestRayInd = i;
                 maxRayLen = rayLen;
             }
         }
+
+        if (maxRayLen == 0) {
+            for (int i=0; i<this->numRays; i++) {
+                double rayLen = dist2d(this->rays[i], this->get_pos(), this->imgWidth);
+                if (maxRayLen < rayLen) {
+                    bestRayInd = i;
+                    maxRayLen = rayLen;
+                }
+            }
+        }
+
+        // 2) find closest unvisted state
+        int start = get_pos();
+        int nextGrid = to_grid(this->imgWidth, rays[bestRayInd], this->gridScale);
+        nextGrid = to_img(this->grid->width, nextGrid, this->gridScale);
+
+        int nextX = get_x(nextGrid, this->imgWidth) + this->gridScale/2;
+        int nextY = get_y(nextGrid, this->imgWidth) + this->gridScale/2;
+
+        int startX = get_x(start, this->imgWidth);
+        int startY = get_y(start, this->imgWidth);
+
+        double angle_dir = atan2((double) (nextY-startY), (double) (nextX-startX));
+        dtheta = angle_dir - this->angle;
+
     }
 
-    // 2) find closest unvisted state
-    int start = get_pos();
-    int nextGrid = to_grid(this->imgWidth, rays[bestRayInd], this->gridScale);
-    nextGrid = to_img(this->grid->width, nextGrid, this->gridScale);
-
-    int nextX = get_x(nextGrid, this->imgWidth) + this->gridScale/2;
-    int nextY = get_y(nextGrid, this->imgWidth) + this->gridScale/2;
-
-    int startX = get_x(start, this->imgWidth);
-    int startY = get_y(start, this->imgWidth);
-
-    double angle_dir = atan2((double) (nextY-startY), (double) (nextX-startX));
-    dtheta = angle_dir - this->angle;
 
     // 3) take that direction
-    speed = 1.5f;
-    move(dtheta, speed);
+    speed = 2;
+    this->hitWall = move(dtheta, speed);
 
 }
 

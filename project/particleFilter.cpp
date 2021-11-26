@@ -12,6 +12,7 @@
 // TODO: once particles converge, guess best location
 // TODO: store best paths in a table?
 // TODO: particleGuess hit wall => resample
+// TODO: for the robot, once the robot remembers too many states, refresh unvisted
 
 
 Pfilter::Pfilter(Robot* robot, Grid* grid, 
@@ -27,8 +28,8 @@ Pfilter::Pfilter(Robot* robot, Grid* grid,
                 DEBUG (DEBUG),
                 maxNumParticles (numParticles),
                 imgWidth (grid->width * gridScale),
-                sample_freq(3),
-                maxRayLen (4 * gridScale) {
+                sample_freq(5),
+                maxRayLen (10 * gridScale) {
 
     this->particleLocations = new int[numParticles];
     this->particleOrientations = new double[numParticles];
@@ -36,10 +37,10 @@ Pfilter::Pfilter(Robot* robot, Grid* grid,
     this->weights = new double[numParticles]; 
     this->robot = robot;
     this->grid = grid;
+    this->i_am_speed = false;
 
     this->sample_counter = 0;
     this->sampling_pos_variance = gridScale / 5;
-    this->robotHitWall = 0;
 
     // 1) init some stuff
     this->grid->init();
@@ -55,6 +56,9 @@ Pfilter::Pfilter(Robot* robot, Grid* grid,
 
     // 3) randomize the goal location
     this->init();
+
+    // 4) reweight to prevent seg fault on first transition
+    this->reweight(); 
     
 
 
@@ -218,14 +222,12 @@ void Pfilter::transition() {
     double dirY = 0; 
 
     // 1) robot move
-    if (this->robotHitWall == 0 || this->numParticles == 1) {
+    if (this->i_am_speed) {
         find_next_step(dtheta, speed, this->particleOrientations[this->particleGuess]);
-        this->robotHitWall = this->robot->move(dtheta, speed); 
-
+        this->robot->move(dtheta, speed); 
     } else {
         // Robot will do it's own stuff
         this->robot->move_greedy(dtheta, speed); 
-        printf("Robot Hit Wall ... moving %f dtheta at speed %f\n", dtheta, speed);
     }
 
     // 2) move each particle
@@ -377,7 +379,7 @@ void Pfilter::reweight() {
     }
 
     // 2) TODO: is this the best variance for particle weight?
-    const double variance = maxRayLen * numRays * 10;
+    const double variance = maxRayLen * numRays * 5;
 
     for (int i=0; i<this->numParticles; i++) {
 
@@ -431,7 +433,7 @@ bool Pfilter::confidence(float param) {
 void Pfilter::sample() {
     
     // 0) check if we are confident in the robot location
-    if (confidence(.25)) {
+    if (confidence(.5)) {
 
         // in real life we would base on sensors but this isn't a robo class
         if (to_grid(this->imgWidth, this->particleLocations[this->particleGuess], this->gridScale)
@@ -441,9 +443,9 @@ void Pfilter::sample() {
             this->particleOrientations[0] = robot->get_angle();
             this->sampling_pos_variance = 2;
             this->numParticles = 1;
-            this->robotHitWall = 0;
+            this->i_am_speed = true;
             printf("wow! ur a cool robot :p You win!\n");
-        } else {
+        } else if (confidence(.75)) {
             this->uniform_sample();
         }
         return;
@@ -477,7 +479,7 @@ void Pfilter::sample() {
                 int candidate_random_pos;
                 do {
                     // TODO: variance is based on gridScale. Is this a good hueristic?
-                    candidate_random_pos = gaussian2d(this->particleLocations[i], this->imgWidth, this->gridScale / 5);
+                    candidate_random_pos = gaussian2d(this->particleLocations[i], this->imgWidth, this->sampling_pos_variance);
                 } while (grid->is_wall_at(to_grid(this->imgWidth, candidate_random_pos, this->gridScale)));
                 
                 newParticleLocations[j] = round(candidate_random_pos);
@@ -511,7 +513,6 @@ void Pfilter::update() {
     if (numParticles > 1 && this->DEBUG != 1 && sample_counter >= this->sample_freq) {
         this->sample();
         this->sample_counter = 0;
-        this->robotHitWall = 0;
         this->reset_weights();
 //        this->robot->print_stuff();
     }

@@ -34,7 +34,8 @@ private:
     int particleGuess;
     int sample_counter;
     int sampling_pos_variance;
-    int robotHitWall;
+
+    bool i_am_speed;
 
     // unseen helper functions
     void init();

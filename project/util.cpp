@@ -134,8 +134,10 @@ double double_mod(double value, double threshold) {
 }
 
 // print stats about the robot or particle
-void print_stats(int pos, int imgWidth, double angle, const char* name) {
-    printf("%s is @ pos %d,%d facing %f degrees\n", name, pos%imgWidth, pos/imgWidth, angle * 180 / PI);
+void print_stats(int pos, int imgWidth, int gridScale, double angle, const char* name) {
+    int gPos = to_grid(imgWidth, pos, gridScale);
+    int gridWidth = imgWidth / gridScale;
+    printf("%s is @ pos %d,%d (%d,%d) facing %f degrees\n", name, pos%imgWidth, pos/imgWidth, gPos % gridWidth, gPos / gridWidth, angle * 180 / PI);
 }
 
 
