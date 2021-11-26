@@ -1,12 +1,10 @@
 
 #include <algorithm>
 
-#include "cycleTimer.h"
-#include "grid.h"
-#include "platformgl.h"
-#include "refRenderer.h"
-
-#include "debug.h"
+#include "include/platformgl.h"
+#include "include/refRenderer.h"
+#include "include/cycleTimer.h"
+#include "include/util.h"
 
 
 void renderPicture();
@@ -15,6 +13,7 @@ void renderPicture();
 static struct {
     int width;
     int height;
+    int DEBUG;
     bool updateSim;
     bool printStats;
     bool pauseSim;
@@ -70,11 +69,11 @@ void handleDisplay() {
 
     glRasterPos2i(0, 0);
     glDrawPixels(width, height, GL_RGBA, GL_FLOAT, img->data);
-    if (DEBUG) {
+    if (gDisplay.DEBUG > 0) {
 
         glColor3f(0, 1, 0);
 
-        // draw rays (only debugging though)
+        // 1) init stuff
         Pfilter* filter = gDisplay.renderer->get_filter();
         int numParticles = filter->get_num_particles();
         int numRays = filter->get_num_rays();
@@ -82,9 +81,9 @@ void handleDisplay() {
         int imageWidth = img->width;
         int* rays = filter->get_rays();
 
-
+        // 2) particle rays
         for (int i=0; i<numParticles; i++) {
-            if (DEBUG == 2) {
+            if (gDisplay.DEBUG == 2) {
                 i = filter->get_best_particle();
             }
             int loc = pLoc[i];
@@ -98,16 +97,17 @@ void handleDisplay() {
                     glVertex2f(x2, y2);
                 glEnd();
             }
-            if (DEBUG == 2) {
+            if (gDisplay.DEBUG == 2) {
                 break;
             }
         }
 
+        // 3) robot rays
         glColor3f(1, 0, 1);
         Robot* robot = filter->get_robot();
         int* roboRays = robot->get_rays();
-        int x1 = robot->get_x(imageWidth);
-        int y1 = robot->get_y(imageWidth);
+        int x1 = get_x(robot->get_pos(), imageWidth);
+        int y1 = get_y(robot->get_pos(), imageWidth);
         for (int j=0; j<numRays; j++) {
             int x2 = roboRays[j] % imageWidth;
             int y2 = roboRays[j] / imageWidth;
@@ -189,7 +189,7 @@ void renderPicture() {
     }
 }
 
-void startRendererWithDisplay(RefRenderer* renderer) {
+void startRendererWithDisplay(RefRenderer* renderer, int DEBUG) {
 
     // setup the display
 
@@ -202,6 +202,7 @@ void startRendererWithDisplay(RefRenderer* renderer) {
     gDisplay.lastFrameTime = CycleTimer::currentSeconds();
     gDisplay.width = img->width;
     gDisplay.height = img->height;
+    gDisplay.DEBUG = DEBUG;
 
     // configure GLUT
 

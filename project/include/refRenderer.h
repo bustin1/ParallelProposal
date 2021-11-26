@@ -4,6 +4,7 @@
 
 #include "particleFilter.h"
 #include "image.h"
+#include "util.h"
 
 
 /*
@@ -19,7 +20,6 @@ private:
 
     Pfilter* filter;
     Image* image;
-    const int goalScale;
 
 public:
 
@@ -27,17 +27,12 @@ public:
     virtual ~RefRenderer();
 
     const Image* get_image();
-
     Pfilter* get_filter();
 
     void setup();
-
     void render();
-
     void clearImage();
-
     void advanceAnimation();
-
     void dumpWalls(const char* filename);
 
 };

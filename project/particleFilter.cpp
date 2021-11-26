@@ -6,90 +6,109 @@
 #include <limits.h>
 #include <algorithm>
 
-#include "particleFilter.h"
-#include "grid.h"
-#include "util.h"
-#include "debug.h"
-#include "robot.h"
-
-#define SAMPLE_FREQ 5
+#include "include/particleFilter.h"
 
 // TODO: robot explore unvisited states
 // TODO: once particles converge, guess best location
-// TODO: store best paths in a table
+// TODO: store best paths in a table?
+// TODO: particleGuess hit wall => resample
 
 
-Pfilter::Pfilter(Robot* r, Grid* g, int n, int s1, int s2) : numRays (20), maxRayLen (100){
+Pfilter::Pfilter(Robot* robot, Grid* grid, 
+                int numParticles, 
+                const int gridScale, 
+                const int particleScale,
+                const int numRays,
+                const int DEBUG)  
+                : numParticles (numParticles),
+                gridScale(gridScale),
+                particleScale(particleScale),
+                numRays (numRays),
+                DEBUG (DEBUG),
+                maxNumParticles (numParticles),
+                imgWidth (grid->width * gridScale),
+                sample_freq(3),
+                maxRayLen (4 * gridScale) {
 
-    numParticles = n;
-    maxNumParticles = n;
-    particleLocations = new int[n]; // x,y
-    particleOrientations = new double[n]; // angles
-    rays = new int[numRays * n]; // each particle gets numRays;
-    weights = new double[n]; 
-    robot = r;
-    grid = g;
-    gridScale = s1;
-    particleScale = s2;
-    sample_counter = 0;
-    sampling_pos_variance = gridScale / 5;
-    robotHitWall = 0;
-    i_am_speed = false;
+    this->particleLocations = new int[numParticles];
+    this->particleOrientations = new double[numParticles];
+    this->rays = new int[numRays * numParticles];
+    this->weights = new double[numParticles]; 
+    this->robot = robot;
+    this->grid = grid;
+
+    this->sample_counter = 0;
+    this->sampling_pos_variance = gridScale / 5;
+    this->robotHitWall = 0;
 
     // 1) init some stuff
-    robot->init_rays(numRays);
-    grid->calc_num_open();
-    grid->calc_num_closed();
-    int imgW = g->width * gridScale;
+    this->grid->init();
+    if (DEBUG) {
+        this->robot->init(numRays, grid, gridScale, -1);
+    } else {
+        this->robot->init(numRays, grid, gridScale, rand_location());
+    }
+    this->goalScale = this->robot->get_scale();
 
-    srand(time(NULL));
     // 2) randomly assign locations to particles in the grid
-    uniform_sample();
+    this->uniform_sample();
 
     // 3) randomize the goal location
-//    int random = rand_num() * num_open;
-//    int loc = open[random];
-//    int j = to_img(g->width, loc, gridScale);
-//
-//    int offsetX = rand_num() * (gridScale-2) + 1;
-//    int offsetY = rand_num() * (gridScale-2) + 1;
-//
-//    int y = j / imgW + offsetX;
-//    int x = j % imgW + offsetY;
-//    goal = y*imgW + x;
-    goal = (imgW - 1.5f*gridScale) + (gridScale * 2.f) * imgW;
+    this->init();
+    
 
-    for (int i=0; i<numParticles; i++) {
-        weights[i] = 1;
+
+}
+
+void Pfilter::reset_weights() {
+    for (int i=0; i<this->numParticles; i++) {
+        this->weights[i] = 1;
+    }
+}
+
+int Pfilter::rand_location() {
+
+    int random = rand_num() * this->grid->num_open;
+    int loc = this->grid->open[random];
+    int j = to_img(this->grid->width, loc, this->gridScale);
+
+    int offsetX = rand_num() * (this->gridScale-2) + 1;
+    int offsetY = rand_num() * (this->gridScale-2) + 1;
+
+    int x = get_x(j, this->imgWidth) + offsetY;
+    int y = get_y(j, this->imgWidth) + offsetX;
+
+    return y*this->imgWidth + x;
+
+}
+
+void Pfilter::init() {
+
+    if (DEBUG) {
+        // bottom right
+        this->goal = (this->imgWidth - 1.5f*this->gridScale) + (this->gridScale * 2.f) * this->imgWidth;
+    } else {
+        this->goal = this->rand_location();
     }
 
 }
 
-
 void Pfilter::uniform_sample() {
 
-    int num_open = grid->num_open;
-    int* open = grid->open;
-    int imgW = grid->width * gridScale;
 
-    for (int i=0; i<numParticles; i++) {
+    // 1) Particle gets rand location
+    for (int i=0; i<this->numParticles; i++) {
 
-        int random = rand_num() * num_open;
-        int loc = open[random]; // uniformly random
-
-        int j = to_img(grid->width, loc, gridScale);
-
-        int offsetX = rand_num() * (gridScale-2) + 1;
-        int offsetY = rand_num() * (gridScale-2) + 1;
-
-        int x = j % imgW + offsetX;
-        int y = j / imgW + offsetY;
-
-        particleLocations[i] = y*imgW + x;
-        particleOrientations[i] = 2.0f * PI * rand_num();
+        this->particleLocations[i] = this->rand_location();
+        this->particleOrientations[i] = rand_angle();
 
     }
-    particleGuess = rand_num() * numParticles;
+
+    // 2) Choose random best particle
+    this->particleGuess = rand_num() * this->numParticles;
+
+    // 3) Reset all particle weights
+    this->reset_weights();
 
 }
 
@@ -105,43 +124,47 @@ Pfilter::~Pfilter() {
 
 // getters and setters
 Grid* Pfilter::get_grid() {
-    return grid;
+    return this->grid;
+}
+
+int Pfilter::get_goal_scale() {
+    return this->goalScale;
 }
 
 int Pfilter::get_num_particles() {
-    return numParticles;
+    return this->numParticles;
 }
 
 int* Pfilter::get_particle_locations() {
-    return particleLocations;
+    return this->particleLocations;
 }
 
 int Pfilter::get_grid_scale() {
-    return gridScale;
+    return this->gridScale;
 }
 
 int Pfilter::get_particle_scale() {
-    return particleScale;
+    return this->particleScale;
 }
 
 int* Pfilter::get_rays() {
-    return rays;
+    return this->rays;
 }
 
 int Pfilter::get_num_rays() {
-    return numRays;
+    return this->numRays;
 }
 
 int Pfilter::get_goal() {
-    return goal;
+    return this->goal;
 }
 
 int Pfilter::get_best_particle() {
-    return particleGuess;
+    return this->particleGuess;
 }
 
 Robot* Pfilter::get_robot() {
-    return robot;
+    return this->robot;
 }
 
 
@@ -149,23 +172,22 @@ Robot* Pfilter::get_robot() {
 // https://gamedev.stackexchange.com/questions/82710/smooth-path-direct-movement
 void Pfilter::find_next_step(double& dtheta, double& speed, double theta) {
 
-    int start = particleLocations[particleGuess];
-    // bfs to find shortest path
-    int imgWidth = grid->width * gridScale;
-    std::vector<int> best_path = bfs(to_grid(imgWidth, start, gridScale), 
-                                to_grid(imgWidth, goal, gridScale), grid);
+    int start = this->particleLocations[this->particleGuess];
+    // 1) bfs to find shortest path
+    std::vector<int> best_path = 
+        bfs(to_grid(this->imgWidth, start, this->gridScale), 
+        to_grid(this->imgWidth, this->goal, this->gridScale), this->grid);
 
-    // TODO: follow the link to find the best path with smoothing
-    
-    if (best_path.size() >= 2) { // haven't hit the goal state
+    // 2) haven't hit the goal state, find direction and speed to go
+    if (best_path.size() >= 2) { 
 
-        int nextGrid = to_img(grid->width, best_path[1], gridScale);
-        float yawRate = robot->get_yaw_rate();
+        int nextGrid = to_img(this->grid->width, best_path[1], this->gridScale);
+        float yawRate = this->robot->get_yaw_rate();
         
-        int nextX = (nextGrid % imgWidth) + gridScale/2;
-        int nextY = (nextGrid / imgWidth) + gridScale/2;
-        int startX = start % imgWidth;
-        int startY = start / imgWidth;
+        int nextX = get_x(nextGrid, this->imgWidth) + this->gridScale/2;
+        int nextY = get_y(nextGrid, this->imgWidth) + this->gridScale/2;
+        int startX = get_x(start, this->imgWidth);
+        int startY = get_y(start, this->imgWidth);
 
         double angle_dir = atan2((double) (nextY-startY), (double) (nextX-startX));
         double turn_angle = angle_dir - theta;
@@ -174,15 +196,14 @@ void Pfilter::find_next_step(double& dtheta, double& speed, double theta) {
         dtheta = clamp(turn_angle, yawRate);
 
         // TODO: Fine tune the variance
-        dtheta = gaussian1d(dtheta, .1); 
+//        dtheta = gaussian1d(dtheta, .1); 
 
         // TODO: Fine the tune the speed
-        speed = 2; 
+        speed = 1.f; 
 
     } else {
-        speed = 0;
-        dtheta = 0;
-        printf("Found flag at cell\n");
+        speed = 1.f;
+        dtheta = rand_angle();
     }
 
 }
@@ -190,48 +211,47 @@ void Pfilter::find_next_step(double& dtheta, double& speed, double theta) {
 
 void Pfilter::transition() {
 
-    int imgWidth = grid->width * gridScale;
-
     double dtheta = 0;
     double speed = 0;
 
     double dirX = 0; 
     double dirY = 0; 
 
-    // robot move
-    if (robotHitWall == 0) {
-        find_next_step(dtheta, speed, particleOrientations[particleGuess]);
-        robotHitWall = robot->move(dtheta, speed); 
-    } else { // ouc
-        speed = 2;
-        robot->move_greedy(dtheta, speed); // U tell robot how fast
-        printf("robot hit wall! (greedy)\n");
+    // 1) robot move
+    if (this->robotHitWall == 0 || this->numParticles == 1) {
+        find_next_step(dtheta, speed, this->particleOrientations[this->particleGuess]);
+        this->robotHitWall = this->robot->move(dtheta, speed); 
+
+    } else {
+        // Robot will do it's own stuff
+        this->robot->move_greedy(dtheta, speed); 
+        printf("Robot Hit Wall ... moving %f dtheta at speed %f\n", dtheta, speed);
     }
 
-    // particle move
-    for (int i=0; i<numParticles; i++) {
+    // 2) move each particle
+    for (int i=0; i<this->numParticles; i++) {
 
-        double candidate_angle = double_mod(particleOrientations[i] + dtheta, 2 * PI);
+        double candidate_angle = 
+            double_mod(this->particleOrientations[i] + dtheta, 2 * PI);
 
         dirX = speed * cos(candidate_angle);
         dirY = speed * sin(candidate_angle);
         
-        int px = particleLocations[i] % imgWidth;
-        int py = particleLocations[i] / imgWidth;
+        int px = get_x(this->particleLocations[i], this->imgWidth);
+        int py = get_y(this->particleLocations[i], this->imgWidth);
 
         int candidate_x = round(px + dirX);
         int candidate_y = round(py + dirY);
 
-        int candidate_pos = candidate_x+imgWidth*candidate_y;
+        int candidate_pos = candidate_x + this->imgWidth*candidate_y;
 
-        particleOrientations[i] = candidate_angle;
+        this->particleOrientations[i] = candidate_angle;
 
-        // if hit wall, don't move 
-        if (!grid->is_wall_at(to_grid(imgWidth, candidate_pos, gridScale))) {
-            // Update particle pose
-            particleLocations[i] = candidate_pos;
-        } else { // randomize the angle for the particle to move in
-            particleOrientations[i] = gaussian1d(candidate_angle, .5);
+        if (!grid->is_wall_at(to_grid(this->imgWidth, candidate_pos, this->gridScale))) {
+            this->particleLocations[i] = candidate_pos;
+        } else { 
+            // randomize the angle for the particle to move in
+            this->particleOrientations[i] = gaussian1d(candidate_angle, .25);
         }
 
     }
@@ -243,10 +263,9 @@ void Pfilter::transition() {
 int Pfilter::getSingleIntersection(int x1, int y1, int x2, int y2,
                                    int x3, int y3, int x4, int y4) {
 
-    int imgWidth = grid->width * gridScale;
     double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
 
-    // colinear :(
+    // 1) colinear :(
     if (denom == 0) {
         return -1;
     }
@@ -255,46 +274,42 @@ int Pfilter::getSingleIntersection(int x1, int y1, int x2, int y2,
     double t = numerator / denom;
     double u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
     if (t > 0 && t < 1 && u > 0) {
+        // 2) Found points!
         int x = round(x1 + t * (double)(x2 - x1));
         int y = round(y1 + t * (double)(y2 - y1));
-        return x + imgWidth*y;
+        return x + this->imgWidth*y;
     }
     
-    // segments too far apart :(
+    // 3) segments too far apart :(
     return -1;
 }
 
-int Pfilter::getClosestIntersection(int ploc, double angle) {
+int Pfilter::getClosestIntersection(int pLoc, double angle) {
 
-    int gw = grid->width;
-    int gh = grid->height;
-    int iw = gw * gridScale;
-
-    int num_closed = gw * gh - grid->num_open;
-    int* closed = grid->closed;
+    int num_closed = this->grid->num_closed;
+    int* closed = this->grid->closed;
 
     double dir_x = cos(angle);
     double dir_y = sin(angle);
 
-    // particle locations
-    int x3 = ploc % (iw);
-    int y3 = ploc / (iw);
+    // 1) particle locations
+    int x3 = get_x(pLoc, this->imgWidth);
+    int y3 = get_y(pLoc, this->imgWidth);
     int x4 = x3 + maxRayLen * dir_x;
     int y4 = y3 + maxRayLen * dir_y;
 
-
-    // save best intersection
+    // 2) save best intersection
     int closestX = x4;
     int closestY = y4; 
-    int closestDist = maxRayLen*maxRayLen;
+    int closestDist = pow(maxRayLen, 2);
 
     for (int i=0; i<num_closed; i++) {
 
-        int wloc = closed[i];
+        int wLoc = closed[i];
 
         // WEIRDEST BUG: line intersection will wrap since it's a 1d contiguous array
-        int x1 = wloc % gw * gridScale; // left_x
-        int y1 = wloc / gw * gridScale; // bot_y
+        int x1 = get_x(wLoc, this->grid->width) * this->gridScale; // left_x
+        int y1 = get_y(wLoc, this->grid->width) * this->gridScale; // bot_y
         int x2 = x1 + gridScale; // right_x
         int y2 = y1 + gridScale; // top_y
 
@@ -305,14 +320,14 @@ int Pfilter::getClosestIntersection(int ploc, double angle) {
 
         for (int j=0; j<4; j++) {
 
-            int intersection = getSingleIntersection(a[j][0], a[j][1], 
-                                                        a[j][2], a[j][3], 
+            int intersection = this->getSingleIntersection(a[j][0], a[j][1], 
+                                                            a[j][2], a[j][3], 
                                                             x3, y3, x4, y4);
 
             if (intersection >= 0) {
 
-                int x = intersection % iw;
-                int y = intersection / iw;
+                int x = get_x(intersection, this->imgWidth);
+                int y = get_y(intersection, this->imgWidth);
 
                 int sx = x3-x;
                 int sy = y3-y;
@@ -328,17 +343,18 @@ int Pfilter::getClosestIntersection(int ploc, double angle) {
 
     }
 
-    return closestY * iw + closestX;
+    return closestY * this->imgWidth + closestX;
 }
 
 
 
 void Pfilter::firerays(int loc, int* ptr, double angle_bias) {
 
-    const double dtheta = 2 * PI / (double)numRays;
-    for (int i=0; i<numRays; i++) {
+    // 1) assume 360 degree view
+    const double dtheta = 2 * PI / this->numRays;
+    for (int i=0; i<this->numRays; i++) {
         double angle = i * dtheta + angle_bias;
-        int coord = getClosestIntersection(loc, angle);
+        int coord = this->getClosestIntersection(loc, angle);
         *ptr = coord;
         ptr++;
     }
@@ -349,23 +365,24 @@ void Pfilter::firerays(int loc, int* ptr, double angle_bias) {
 void Pfilter::reweight() {
 
     // get robo observation
-    int* roboRay = robot->get_rays();
-    
-    firerays(robot->get_pos(), roboRay, robot->get_angle());
-    const double var = maxRayLen * numRays;
-    int iw = grid->width * gridScale;
+    int* roboRay = this->robot->get_rays();
+    int roboPos = this->robot->get_pos();
+    this->firerays(roboPos, roboRay, this->robot->get_angle());
 
+    // 1) fire ray for robot
     double* roboRayLen = new double[numRays];
     for (int i=0; i<numRays; i++) {
-        int rRay = roboRay[i];
-        double rRayLen = dist2d(robot->get_pos(), rRay, iw);
+        double rRayLen = dist2d(roboPos, roboRay[i], this->imgWidth);
         roboRayLen[i] = rRayLen;
     }
 
-    for (int i=0; i<numParticles; i++) {
+    // 2) TODO: is this the best variance for particle weight?
+    const double variance = maxRayLen * numRays * 10;
 
-        int pLoc = particleLocations[i];
-        firerays(pLoc, rays + i*numRays, particleOrientations[i]);
+    for (int i=0; i<this->numParticles; i++) {
+
+        int pLoc = this->particleLocations[i];
+        firerays(pLoc, rays + i*this->numRays, this->particleOrientations[i]);
 
         // reweight with gaussian distribution
         // 1) we assume that given the particle's location
@@ -374,118 +391,106 @@ void Pfilter::reweight() {
         // and p := particle's observation
 
         double exp = 0;
-        for (int j=0; j<numRays; j++) {
+        for (int j=0; j<this->numRays; j++) {
 
-            int pRay = rays[i*numRays+j];
-            double pRayLen = dist2d(pRay, pLoc, iw);
-            
+            int pRay = rays[i*this->numRays+j];
+            double pRayLen = dist2d(pRay, pLoc, this->imgWidth);
+
             double rayDiff = roboRayLen[j] - pRayLen;
             exp += pow(rayDiff, 2);
 
         }
 //        printf("exp: %f\n", exp);
-//        printf("-exp/var: %f\n", -exp/var);
-        weights[i] *= pow(E, -exp / var / SAMPLE_FREQ); // TODO: tune
+//        printf("exp: %f\n", -exp / variance / sample_freq);
+//        printf("weights: %f\n", this->weights[i]);
+        this->weights[i] *= pow(E, -exp / variance / sample_freq); // TODO: tune
 //        printf("weights[%d]: %f\n", i, weights[i]);
 
     }
-//    printf("particleFilter.cpp: particle locations is %d\n", particleLocations[0]);
 
 }
 
 bool Pfilter::confidence(float param) {
+
+    // 1) test if it is a majority
     int count = 0;
-    int imgWidth = grid->width * gridScale;
-    int res = to_grid(imgWidth, particleLocations[0], gridScale);
-
-    // moore's majority voting algorithm
-    for (int i=0; i<numParticles; i++) {
-        int testLoc = to_grid(imgWidth, particleLocations[i], gridScale);
-        if (testLoc == res) {
-            count++;
-        } else {
-            count--;
-        }
-        if (count == 0) {
-            res = testLoc;
-            count = 1;
-        }
-    }
-
-    // test if it is a majority
-    count = 0;
-    for (int i=0; i<numParticles; i++) {
-        int testLoc = to_grid(imgWidth, particleLocations[i], gridScale);
+    int res = to_grid(this->imgWidth, this->particleLocations[particleGuess], this->gridScale);
+    for (int i=0; i<this->numParticles; i++) {
+        int testLoc = to_grid(this->imgWidth, this->particleLocations[i], this->gridScale);
         if (testLoc == res) {
             count++;
         }
     }
 
     float c = (float) count / (float) numParticles;
-    printf("your confidence is %d/%d = %f\n", count, numParticles, c);
+    printf("your confidence is %d/%d = %f\n", count, this->numParticles, c);
     return c > param;
 
 }
 
 void Pfilter::sample() {
     
-    int imgWidth = grid->width * gridScale;
-
     // 0) check if we are confident in the robot location
-    if (confidence(.5)) {
+    if (confidence(.25)) {
 
-        printf("wow! ur a cool robot :p\n");
         // in real life we would base on sensors but this isn't a robo class
-        if (to_grid(imgWidth, particleLocations[particleGuess], gridScale)
-                == to_grid(imgWidth, robot->get_pos(), gridScale)) {
-            i_am_speed = true;
+        if (to_grid(this->imgWidth, this->particleLocations[this->particleGuess], this->gridScale)
+                == to_grid(this->imgWidth, this->robot->get_pos(), this->gridScale)) {
+            this->particleGuess = 0;
+            this->particleLocations[0] = robot->get_pos();
+            this->particleOrientations[0] = robot->get_angle();
+            this->sampling_pos_variance = 2;
+            this->numParticles = 1;
+            this->robotHitWall = 0;
+            printf("wow! ur a cool robot :p You win!\n");
         } else {
-            uniform_sample();
+            this->uniform_sample();
         }
         return;
     }
 
     // 1) find the best particle (GREEDY)
     double best_weight = 0;
-    for (int i=0; i<numParticles; i++) {
-        if (best_weight < weights[i]) {
-            best_weight = weights[i];
-            particleGuess = i;             
+    for (int i=0; i<this->numParticles; i++) {
+        if (best_weight < this->weights[i]) {
+            best_weight = this->weights[i];
+            this->particleGuess = i;             
         }
 
     }
 
-    printf("best weight is %f\n", best_weight);
+//    printf("best weight is %f\n", best_weight);
 
     // 2) calculate running weights
     double* running_weights = weights;
-    for (int i=1; i<numParticles; i++) {
+    for (int i=1; i<this->numParticles; i++) {
         running_weights[i] += running_weights[i-1];
     }
     
     // 3) resample every particle
     int* newParticleLocations = new int[numParticles];
-    double* newParticleOrientations = new double[numParticles];
-    for (int j=0; j<numParticles; j++) {
-        double rand = rand_num() * running_weights[numParticles-1];
+    double* newParticleOrientations = new double[this->numParticles];
+    for (int j=0; j<this->numParticles; j++) {
+        double rand = rand_num() * running_weights[this->numParticles-1];
         for (int i=0; i<numParticles; i++) {
             if (rand < running_weights[i]) {
                 int candidate_random_pos;
                 do {
                     // TODO: variance is based on gridScale. Is this a good hueristic?
-                    candidate_random_pos = gaussian2d(particleLocations[i], imgWidth, gridScale / 5); // TODO: change this
-                } while (grid->is_wall_at(to_grid(imgWidth, candidate_random_pos, gridScale)));
+                    candidate_random_pos = gaussian2d(this->particleLocations[i], this->imgWidth, this->gridScale / 5);
+                } while (grid->is_wall_at(to_grid(this->imgWidth, candidate_random_pos, this->gridScale)));
                 
                 newParticleLocations[j] = round(candidate_random_pos);
-                newParticleOrientations[j] = gaussian1d(particleOrientations[i], 0.05); // ~3 degrees
+                newParticleOrientations[j] = gaussian1d(this->particleOrientations[i], 0.1); // ~6 degrees
                 break;
             }
         }
     }
 
-    for (int i=0; i<numParticles; i++) {
-        particleLocations[i] = newParticleLocations[i];
-        particleOrientations[i] = newParticleOrientations[i];
+    // 4) update particle locations
+    for (int i=0; i<this->numParticles; i++) {
+        this->particleLocations[i] = newParticleLocations[i];
+        this->particleOrientations[i] = newParticleOrientations[i];
     }
 
 }
@@ -496,27 +501,20 @@ void Pfilter::update() {
 
 
     // 1) transition particles uniformly random
-    transition();
+    this->transition();
 
     // 2) Reweight (fire rays and check intersection)
-    reweight(); 
+    this->reweight(); 
 
     // 3) resample
-    if (robotHitWall) {
-        sample_counter++; // must hit wall to activate a sample
-    } 
-
-    if (DEBUG != 1 && sample_counter == SAMPLE_FREQ) {
-        sample();
-        sample_counter = 0;
-        robotHitWall = 0;
-        for (int i=0; i<numParticles; i++) {
-            weights[i] = 1;
-        }
-        printf("done sampling :O !\n");
-        robot->print_stuff();
+    this->sample_counter++; // must hit wall to activate a sample
+    if (numParticles > 1 && this->DEBUG != 1 && sample_counter >= this->sample_freq) {
+        this->sample();
+        this->sample_counter = 0;
+        this->robotHitWall = 0;
+        this->reset_weights();
+//        this->robot->print_stuff();
     }
-
 
 }
 

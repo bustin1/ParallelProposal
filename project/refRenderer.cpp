@@ -5,13 +5,11 @@
 #include <stdio.h>
 #include <vector>
 
-#include "refRenderer.h"
-#include "grid.h"
-#include "util.h"
+#include "include/refRenderer.h"
 
 
 
-RefRenderer::RefRenderer(Pfilter* f) : goalScale (3){
+RefRenderer::RefRenderer(Pfilter* f) {
     filter = f;
     Grid* grid = filter->get_grid();
     int w = grid->width;
@@ -55,7 +53,7 @@ void RefRenderer::render() {
     int particleScale = filter->get_particle_scale();
     int imageWidth = image->width;
 
-    // draws the particles
+    // 1) draws the particles
     for (int i=0; i<numParticles; i++) {
         int loc = 4 * pLoc[i];
         for (int y=0; y<particleScale; y++) {
@@ -70,11 +68,13 @@ void RefRenderer::render() {
     }
 
     int goal = filter->get_goal() * 4;
+    int goalScale = filter->get_goal_scale();
 
-    // set location of goal
+    // 2) set location of goal
     
-    for (int y=0; y<particleScale*goalScale; y++) {
-        for (int x=0; x<particleScale*goalScale; x++) {
+    int goalSize = goalScale * particleScale;
+    for (int y=-goalSize/2; y<goalSize/2; y++) {
+        for (int x=-goalSize/2; x<goalSize/2; x++) {
             int pos = goal + 4 * (y * imageWidth) + 4 * x;
             data[pos] = 1;
             data[pos+1] = 0;
@@ -83,9 +83,9 @@ void RefRenderer::render() {
         }
     }
 
-    // TODO: if debug
+    // 3) draw robot
     Robot* robot = filter->get_robot();
-    int robotScale = robot->get_scale();
+    int robotScale = robot->get_scale()*particleScale;
     int robopos = robot->get_pos() * 4;
     for (int y=-robotScale/2; y<robotScale/2; y++) {
         for (int x=-robotScale/2; x<robotScale/2; x++) {

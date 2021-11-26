@@ -2,132 +2,162 @@
 
 #include <math.h>
 #include <iostream>
-#include "robot.h"
-#include "util.h"
+#include "include/robot.h"
 
 
-Robot::Robot(Grid* g, int gscale) : yawRate (.25), robotScale (10) {
-    grid = g;
-    gridScale = gscale;
-    int imgW = gscale * g->width;
-    set_pose(1.5f*gridScale + imgW * (grid->height-1) * gridScale, 2.0f * PI * rand_num());
-}
+// yawRate := how much the robot can turn in radians
+Robot::Robot() : yawRate(.5) { 
 
-
-Robot::Robot(Grid* g, int gscale, int p, double a) : yawRate (.25), robotScale (10) {
-    grid = g;
-    pos = p;
-    gridScale = gscale;
-    angle = a; // TODO: randomize angle, remove p from arguments
 }
 
 Robot::~Robot() {
-    printf("deleting robot beep boop ...");
-    if (rays) {
-        delete rays;
+    if (this->rays) {
+        delete this->rays;
     }
 }
 
-void Robot::init_rays(const int n) {
-    numRays = n;
-    rays = new int[numRays];
+void Robot::init(const int numRays, 
+                 Grid* grid, 
+                 const int gridScale,
+                 int pos) {
+
+    this->gridScale = gridScale;
+    this->numRays = numRays; 
+    this->imgWidth = grid->width * gridScale;
+    this->rays = new int[numRays];
+    this->grid = grid;
+    this->robotScale = gridScale / 5; // heuristic?
+
+    int gridSize = grid->num_closed + grid->num_open;
+    this->visitedStates = new bool[gridSize];
+    for (int i=0; i<gridSize; i++) {
+        this->visitedStates[i] = (grid->walls[i] == 1);
+    }
+
+    if (pos < 0) {
+        // top left
+        this->pos = 1.5f*gridScale + imgWidth * (grid->height-1) * gridScale;
+    } else {
+        this->pos = pos;
+    }
+
+    this->angle = rand_angle();
 }
 
 int* Robot::get_rays() {
-    return rays;
+    return this->rays;
 }
 
 int Robot::get_pos() {
-    return pos;
+    return this->pos;
 }
 
 double Robot::get_angle() {
-    return angle;
+    return this->angle;
 }
 
-int Robot::get_x(int width) {
-    return pos % width;
-}
-
-int Robot::get_y(int width) {
-    return pos / width;
-}
-
-float Robot::get_yaw_rate() {
-    return yawRate;
+double Robot::get_yaw_rate() {
+    return this->yawRate;
 }
 
 int Robot::get_scale() {
-    return robotScale;
+    return this->robotScale;
 }
 
-void Robot::set_pose(int p, double a) {
-    pos = p;
-    angle = a;
+void Robot::set_pose(int pos, double angle) {
+    this->pos = pos;
+    this->angle = angle;
 }
 
 
-// turn dtheta degrjes from it's own angle and move with it's speed
+void Robot::update_visited_states() {
+    int gPos = to_grid(this->imgWidth, this->pos, this->gridScale);
+    visitedStates[gPos] = true;
+}
+
+bool Robot::visited(int rayPos) {
+
+    int gPos = to_grid(this->imgWidth, rayPos-this->imgWidth*2, this->gridScale);
+    return visitedStates[gPos];
+}
+
+// turn dtheta degrees from it's own angle and move with it's speed
 // note that dtheta must be clamped with yaw rate
 bool Robot::move(double dtheta, double speed) {
 
-    int imgWidth = grid->width * gridScale;
-
-    double candidate_angle = double_mod(angle + dtheta, 2 * PI);
+    double candidate_angle = double_mod(this->angle + dtheta, 2 * PI);
 
     double dirX = speed * cos(candidate_angle);
     double dirY = speed * sin(candidate_angle);
     
-    int rx = pos % imgWidth;
-    int ry = pos / imgWidth;
+    int rx = pos % this->imgWidth;
+    int ry = pos / this->imgWidth;
 
     int candidate_x = round(rx + dirX);
     int candidate_y = round(ry + dirY);
 
-    int candidate_pos = candidate_x+imgWidth*candidate_y;
+    int candidate_pos = candidate_x+this->imgWidth*candidate_y;
 
-    angle = candidate_angle;
+    this->angle = candidate_angle;
 
-    // if hit wall, don't move 
-    if (!grid->is_wall_at(to_grid(imgWidth, candidate_pos, gridScale))) {
-        pos = candidate_pos;
+    if (!grid->is_wall_at(to_grid(this->imgWidth, candidate_pos, this->gridScale))) {
+        this->pos = candidate_pos;
+        update_visited_states();
         return false;
     }
     
+    // if hit wall, don't move 
     return true;
 
 
 }
 
-void Robot::move_greedy(double& dtheta, double speed) {
+void Robot::move_greedy(double& dtheta, double& speed) {
 
-    int imgWidth = grid->width * gridScale;
+    int bestRayInd = 0;
+    double maxRayLen = 0;
 
-    // 1) find max ray length
+    // 1) find best ray
+    for (int i=0; i<this->numRays; i++) {
 
-    double maxRay = 0;
-    int maxRayInd = 0;
-    for (int i=0; i<numRays; i++) {
-        double rayLen = dist2d(pos, rays[i], imgWidth);
-        if (maxRay < rayLen) {
-            maxRay = rayLen;
-            maxRayInd = i;
+        double rayLen = dist2d(this->rays[i], this->get_pos(), this->imgWidth);
+
+        // need to interpolate to the weird bug with line intersections
+        int ray = interpolate(this->get_pos(), this->rays[i], this->imgWidth, .95);
+
+        if (maxRayLen < rayLen && !this->visited(ray)) {
+            bestRayInd = i;
+            maxRayLen = rayLen;
         }
     }
 
-    // 2) travese that direction
+    if (maxRayLen == 0) {
+        for (int i=0; i<this->numRays; i++) {
+            double rayLen = dist2d(this->rays[i], this->get_pos(), this->imgWidth);
+            if (maxRayLen < rayLen) {
+                bestRayInd = i;
+                maxRayLen = rayLen;
+            }
+        }
+    }
 
-    double sx = get_x(imgWidth);
-    double sy = get_y(imgWidth);
-    double ex = rays[maxRayInd] % imgWidth;
-    double ey = rays[maxRayInd] / imgWidth;
+    // 2) find closest unvisted state
+    int start = get_pos();
+    int nextGrid = to_grid(this->imgWidth, rays[bestRayInd], this->gridScale);
+    nextGrid = to_img(this->grid->width, nextGrid, this->gridScale);
 
-    int dir_x = round((ex - sx) / maxRay * speed);
-    int dir_y = round((ey - sy) / maxRay * speed);
+    int nextX = get_x(nextGrid, this->imgWidth) + this->gridScale/2;
+    int nextY = get_y(nextGrid, this->imgWidth) + this->gridScale/2;
 
-    pos = imgWidth*(dir_y+sy) + (sx+dir_x);
-    dtheta = atan2(ey-sy, ex-sx) - angle;
-    angle += dtheta;
+    int startX = get_x(start, this->imgWidth);
+    int startY = get_y(start, this->imgWidth);
+
+    double angle_dir = atan2((double) (nextY-startY), (double) (nextX-startX));
+    dtheta = angle_dir - this->angle;
+
+    // 3) take that direction
+    speed = 1.5f;
+    move(dtheta, speed);
 
 }
 

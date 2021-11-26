@@ -2,26 +2,24 @@
 
 #include <stdlib.h>
 #include <math.h>
-#include <bits/stdc++.h>
-#include "util.h"
-#include "grid.h"
 
+#include "include/util.h"
 
 
 // converts an image pixel to a grid location
 // i := index of location in image space
-int to_grid(int imageWidth, int i, int gridScale) {
+int to_grid(int imgWidth, int i, int gridScale) {
 
-    int iw = imageWidth;
-    int gw = iw / gridScale;
+    int gridWidth = imgWidth / gridScale;
 
-    int x = i % iw;
-    int y = i / iw;
+    int x = i % imgWidth;
+    int y = i / imgWidth;
 
     int gx = x / gridScale; 
     int gy = y / gridScale;
 
-    return gx + gy*(gw);
+    return gx + gy*gridWidth;
+
 }
 
 
@@ -29,27 +27,26 @@ int to_grid(int imageWidth, int i, int gridScale) {
 // i := index of location in grid space
 int to_img(int gridWidth, int i, int gridScale) {
 
-    int gw = gridWidth;
-    int iw = gw * gridScale;
+    int imgWidth = gridWidth * gridScale;
 
-    int x = i % gw;
-    int y = i / gw;
+    int x = i % gridWidth;
+    int y = i / gridWidth;
 
     int ix = x * gridScale;
     int iy = y * gridScale;
 
-    int j = iy*iw + ix;
+    return iy*imgWidth + ix;
 
-    return j;
 }
 
 
-// TODO: put in helper functions
+// returns a random number between 0 and 1
 double rand_num() {
     return (double) rand()/RAND_MAX;
 }
 
 
+// returns a gaussian 1d random number
 double gaussian1d(double mean, double variance) {
 
     double v1 = rand_num();
@@ -122,23 +119,27 @@ std::vector<int> bfs(int start, int goal, Grid* grid) {
 }
 
 
+// value is clamped from [-threshold, threshold]
 double clamp(double value, double threshold) {
     if (value > threshold) return threshold;
     if (value < -threshold) return -threshold;
     return value;
 }
 
+// mods a double 
 double double_mod(double value, double threshold) {
     if (value > threshold) value -= threshold;
     if (value < -threshold) value += threshold;
     return value;
 }
 
+// print stats about the robot or particle
 void print_stats(int pos, int imgWidth, double angle, const char* name) {
-    printf("%s is @ pos %d,%d facing %f degrees\n", name, pos%imgWidth, pos/imgWidth, angle);
+    printf("%s is @ pos %d,%d facing %f degrees\n", name, pos%imgWidth, pos/imgWidth, angle * 180 / PI);
 }
 
 
+// distance between two points in image space
 double dist2d(int p1, int p2, int imgWidth) {
 
     int x1 = p1 % imgWidth;
@@ -151,13 +152,39 @@ double dist2d(int p1, int p2, int imgWidth) {
 
 }
 
+// returns a random angle
+double rand_angle() {
+    return 2.0f * PI * rand_num();
+}
+
+int get_x(int i, int imgWidth) {
+    return i % imgWidth;
+}
+
+int get_y(int i, int imgWidth) {
+    return i / imgWidth;
+}
+
+int interpolate(int start, int end, int imgWidth, double t) {
+
+    int sx = get_x(start, imgWidth);
+    int sy = get_y(start, imgWidth);
+
+    int ex = get_x(end, imgWidth);
+    int ey = get_y(end, imgWidth);
+
+    int newX = sx+(ex-sx)*t;
+    int newY = sy+(ey-sy)*t;
+
+    return newX + newY*imgWidth;
+
+}
 
 
-
-
-
-
-
+// print of location if width=gridWidth then grid location
+void print_loc(char* function_name, int pos, int width) {
+    printf("In function %s: pos=%d,%d\n", function_name, pos%width, pos/width);
+}
 
 
 
