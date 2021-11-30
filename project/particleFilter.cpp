@@ -425,7 +425,7 @@ bool Pfilter::confidence(float param) {
     }
 
     float c = (float) count / (float) numParticles;
-    printf("your confidence is %d/%d = %f\n", count, this->numParticles, c);
+//    printf("your confidence is %d/%d = %f\n", count, this->numParticles, c);
     return c > param;
 
 }

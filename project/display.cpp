@@ -189,7 +189,7 @@ void renderPicture() {
     }
 }
 
-void startRendererWithDisplay(RefRenderer* renderer, int DEBUG) {
+void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats) {
 
     // setup the display
 
@@ -198,7 +198,7 @@ void startRendererWithDisplay(RefRenderer* renderer, int DEBUG) {
     gDisplay.renderer = renderer;
     gDisplay.updateSim = true;
     gDisplay.pauseSim = false;
-    gDisplay.printStats = false;
+    gDisplay.printStats = printStats;
     gDisplay.lastFrameTime = CycleTimer::currentSeconds();
     gDisplay.width = img->width;
     gDisplay.height = img->height;

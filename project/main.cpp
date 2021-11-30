@@ -13,7 +13,7 @@
 
 
 // in display.cpp
-void startRendererWithDisplay(RefRenderer* renderer, int DEBUG);
+void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats);
 
 
 int main(int argc, char *argv[]) {
@@ -25,9 +25,10 @@ int main(int argc, char *argv[]) {
     int numRays = -1;
     int gridScale = -1;
     int debug = 0;
+    bool printStats = false;
 
     do {
-        opt = getopt(argc, argv, "i:h:n:d:g:r:");
+        opt = getopt(argc, argv, "i:h:n:d:g:r:p:");
         switch(opt) {
         case 'i':
             inputFilename = optarg;
@@ -46,6 +47,9 @@ int main(int argc, char *argv[]) {
             break;
         case 'd':
             debug = atoi(optarg);
+            break;
+        case 'p':
+            printStats = true;
             break;
         }
     } while (opt != -1);
@@ -105,7 +109,7 @@ int main(int argc, char *argv[]) {
     RefRenderer* renderer = new RefRenderer(filter);
 
     glutInit(&argc, argv);
-    startRendererWithDisplay(renderer, debug);
+    startRendererWithDisplay(renderer, debug, printStats);
 
 
 
