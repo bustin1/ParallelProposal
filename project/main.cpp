@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <time.h>
 
-
 #include "include/robot.h"
 #include "include/refRenderer.h"
 #include "include/grid.h"
@@ -13,7 +12,8 @@
 
 
 // in display.cpp
-void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats);
+void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats,
+                                int numThreads);
 
 
 int main(int argc, char *argv[]) {
@@ -25,10 +25,11 @@ int main(int argc, char *argv[]) {
     int numRays = -1;
     int gridScale = -1;
     int debug = 0;
+    int numThreads = 1;
     bool printStats = false;
 
     do {
-        opt = getopt(argc, argv, "i:h:n:d:g:r:p:");
+        opt = getopt(argc, argv, "i:h:n:d:g:r:p:t:");
         switch(opt) {
         case 'i':
             inputFilename = optarg;
@@ -51,6 +52,9 @@ int main(int argc, char *argv[]) {
         case 'p':
             printStats = true;
             break;
+        case 't':
+            numThreads = atoi(optarg);
+            break;
         }
     } while (opt != -1);
 
@@ -63,6 +67,8 @@ int main(int argc, char *argv[]) {
         printf("-r: <numRays> Number of rays out of each particle. Example: 20\n");
         printf("-g: <gridScale> Width and Height (px) of one wall. Example: 20\n");
         printf("-d: <debug>. \n\t0=no debug(default)\n\t1=debug with all ray particles\n\t2=debug with best particle\n");
+        printf("-p: <printStats>. print clear, advance, and render time\n");
+        printf("-t: <numThreads>. Number of threads in openMP\n");
         return 0; 
     }
 
@@ -104,12 +110,12 @@ int main(int argc, char *argv[]) {
 
     Robot* robot = new Robot();
     Pfilter* filter = new Pfilter(robot, grid, numParticles, gridScale, 
-                                    particleScale, numRays, debug);
+                                    particleScale, numRays, debug, numThreads);
 
     RefRenderer* renderer = new RefRenderer(filter);
 
     glutInit(&argc, argv);
-    startRendererWithDisplay(renderer, debug, printStats);
+    startRendererWithDisplay(renderer, debug, printStats, numThreads);
 
 
 

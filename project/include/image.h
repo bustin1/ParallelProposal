@@ -2,6 +2,7 @@
 #ifndef  __IMAGE_H__
 #define  __IMAGE_H__
 
+#include <omp.h>
 #include "grid.h"
 
 /*
@@ -18,26 +19,27 @@ struct Image {
     }
 
     // redraws the image with the maze
-    void clear(Grid* grid, int gridScale, int (*to_grid)(int, int, int)) {
+    void clear(Grid* grid, int gridScale, int (*to_grid)(int, int, int), int numThreads) {
 
         int numPixels = width * height;
 
         float* ptr = data;
+        omp_set_num_threads(numThreads);
+        #pragma omp parallel for shared(ptr)
         for (int i=0; i<numPixels; i++) {
-            ptr[0] = 1;
-            ptr[1] = 1;
-            ptr[2] = 1;
-            ptr[3] = 1;
+            ptr[i*4] = 1;
+            ptr[i*4+1] = 1;
+            ptr[i*4+2] = 1;
+            ptr[i*4+3] = 1;
 
             int g = to_grid(width, i, gridScale);
             if (grid->is_wall_at(g)) {
-                ptr[0] = 0;
-                ptr[1] = 0;
-                ptr[2] = 0;
-                ptr[3] = 0;
+                ptr[i*4] = 0;
+                ptr[i*4+1] = 0;
+                ptr[i*4+2] = 0;
+                ptr[i*4+3] = 0;
             }
 
-            ptr += 4;
         }
     }
 

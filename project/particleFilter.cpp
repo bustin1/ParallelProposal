@@ -5,7 +5,10 @@
 #include <math.h>
 #include <limits.h>
 #include <algorithm>
+#include <omp.h>
 
+
+#include "include/cycleTimer.h"
 #include "include/particleFilter.h"
 
 // TODO: robot explore unvisited states
@@ -20,7 +23,8 @@ Pfilter::Pfilter(Robot* robot, Grid* grid,
                 const int gridScale, 
                 const int particleScale,
                 const int numRays,
-                const int DEBUG)  
+                const int DEBUG,
+                int numThreads)  
                 : numParticles (numParticles),
                 gridScale(gridScale),
                 particleScale(particleScale),
@@ -29,7 +33,8 @@ Pfilter::Pfilter(Robot* robot, Grid* grid,
                 maxNumParticles (numParticles),
                 imgWidth (grid->width * gridScale),
                 sample_freq(5),
-                maxRayLen (10 * gridScale) {
+                maxRayLen (10 * gridScale),
+                numThreads(numThreads){
 
     this->particleLocations = new int[numParticles];
     this->particleOrientations = new double[numParticles];
@@ -231,7 +236,9 @@ void Pfilter::transition() {
     }
 
     // 2) move each particle
+    double currentTime = CycleTimer::currentSeconds();
     for (int i=0; i<this->numParticles; i++) {
+//        printf("%d: thread # %d\n", i, omp_get_thread_num());
 
         double candidate_angle = 
             double_mod(this->particleOrientations[i] + dtheta, 2 * PI);
@@ -257,6 +264,8 @@ void Pfilter::transition() {
         }
 
     }
+    double endTime = CycleTimer::currentSeconds();
+    printf("Transition Time: %.3f\n", endTime-currentTime);
 
 
 }
@@ -381,6 +390,9 @@ void Pfilter::reweight() {
     // 2) TODO: is this the best variance for particle weight?
     const double variance = maxRayLen * numRays * 5;
 
+    double currentTime = CycleTimer::currentSeconds();
+    omp_set_num_threads(this->numThreads);
+    #pragma omp parallel for
     for (int i=0; i<this->numParticles; i++) {
 
         int pLoc = this->particleLocations[i];
@@ -409,6 +421,8 @@ void Pfilter::reweight() {
 //        printf("weights[%d]: %f\n", i, weights[i]);
 
     }
+    double endTime = CycleTimer::currentSeconds();
+    printf("Reweight Time: %.3f\n", endTime-currentTime);
 
 }
 
