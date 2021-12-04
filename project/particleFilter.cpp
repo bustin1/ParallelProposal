@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <omp.h>
 
+#include <immintrin.h>
 
 #include "include/cycleTimer.h"
 #include "include/particleFilter.h"
@@ -277,13 +278,14 @@ int Pfilter::getSingleIntersection(int x1, int y1, int x2, int y2,
     double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
 
     // 1) colinear :(
-    if (denom == 0) {
+    if (denom == 0) { // Interesting this case doesn't occur that often
         return -1;
     }
 
     double numerator = (x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4);
     double t = numerator / denom;
     double u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+
     if (t > 0 && t < 1 && u > 0) {
         // 2) Found points!
         int x = round(x1 + t * (double)(x2 - x1));
@@ -294,6 +296,19 @@ int Pfilter::getSingleIntersection(int x1, int y1, int x2, int y2,
     // 3) segments too far apart :(
     return -1;
 }
+
+// TODO: HERE!!
+//bool Pfilter::wall_in_box(int wLoc, int center) {
+//
+//    int x1 = get_x(wLoc, this->grid->width);
+//    int y1 = get_y(wLoc, this->grid->width);
+//
+//    int x2 = get_x(to_grid(this->imgWidth, center, this->gridScale), this->grid->width);
+//    int y2 = get_y(to_grid(this->imgWidth, center, this->gridScale), this->grid->width);
+//
+//    const int s = this->maxRayLen / this->gridScale;
+//    return (x1 > x2 - s && x1 < x2 + s && y1 > y2 - s && y1 < y2 + s);
+//}
 
 int Pfilter::getClosestIntersection(int pLoc, double angle) {
 
@@ -317,6 +332,10 @@ int Pfilter::getClosestIntersection(int pLoc, double angle) {
     for (int i=0; i<num_closed; i++) {
 
         int wLoc = closed[i];
+
+//        if (!wall_in_box(wLoc, pLoc)) {
+//            continue;
+//        }
 
         // WEIRDEST BUG: line intersection will wrap since it's a 1d contiguous array
         int x1 = get_x(wLoc, this->grid->width) * this->gridScale; // left_x
@@ -363,6 +382,7 @@ void Pfilter::firerays(int loc, int* ptr, double angle_bias) {
 
     // 1) assume 360 degree view
     const double dtheta = 2 * PI / this->numRays;
+    
     for (int i=0; i<this->numRays; i++) {
         double angle = i * dtheta + angle_bias;
         int coord = this->getClosestIntersection(loc, angle);
@@ -371,6 +391,7 @@ void Pfilter::firerays(int loc, int* ptr, double angle_bias) {
     }
      
 }
+
 
 
 void Pfilter::reweight() {
@@ -392,7 +413,9 @@ void Pfilter::reweight() {
 
     double currentTime = CycleTimer::currentSeconds();
     omp_set_num_threads(this->numThreads);
-    #pragma omp parallel for
+#pragma omp parallel
+{
+    #pragma omp for
     for (int i=0; i<this->numParticles; i++) {
 
         int pLoc = this->particleLocations[i];
@@ -414,15 +437,13 @@ void Pfilter::reweight() {
             exp += pow(rayDiff, 2);
 
         }
-//        printf("exp: %f\n", exp);
-//        printf("exp: %f\n", -exp / variance / sample_freq);
-//        printf("weights: %f\n", this->weights[i]);
-        this->weights[i] *= pow(E, -exp / variance / sample_freq); // TODO: tune
-//        printf("weights[%d]: %f\n", i, weights[i]);
+        this->weights[i] *= pow(E, -exp / variance / this->sample_freq);
 
     }
     double endTime = CycleTimer::currentSeconds();
-    printf("Reweight Time: %.3f\n", endTime-currentTime);
+    printf("Process %d =====> Reweight Time: %.3f\n", omp_get_thread_num(), endTime-currentTime);
+
+}
 
 }
 

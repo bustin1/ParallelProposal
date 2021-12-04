@@ -1,0 +1,4 @@
+image clear is slow => breakdown into open and closed
+get closest intersection is slow => use wall in radius
+parallel k means?
+vector simd instructions numRays?

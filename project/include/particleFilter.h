@@ -76,6 +76,8 @@ public:
     int get_particle_scale();
     int get_best_particle();
 
+    bool wall_in_box(int wLoc, int center);
+
     Robot* get_robot();
     Grid* get_grid();
 
