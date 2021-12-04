@@ -43,6 +43,7 @@ public:
                  Grid* grid, 
                  const int gridScale,
                  int pos);
+    void reset_visited();
 
     // getters and setters
     int get_pos();

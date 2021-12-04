@@ -15,6 +15,7 @@ private:
     Robot* robot;
 
     int* particleLocations;
+    int* particleWallHit;
     int* rays;
     double* particleOrientations;
     double* weights;

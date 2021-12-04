@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
     }
 
 
+
     const int particleScale= 3; // width x height of particle
 
     srand(time(NULL));
