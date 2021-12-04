@@ -34,7 +34,6 @@ private:
     int particleGuess;
     int sample_counter;
     int sampling_pos_variance;
-    int numThreads;
 
     bool i_am_speed;
 
@@ -60,8 +59,7 @@ public:
                 const int gridScale, 
                 const int particleScale,
                 const int numRays,
-                const int DEBUG,
-                int numThreads);
+                const int DEBUG);
 
     virtual ~Pfilter();
 

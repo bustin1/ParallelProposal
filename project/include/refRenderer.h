@@ -31,7 +31,7 @@ public:
 
     void setup();
     void render();
-    void clearImage(int numThreads);
+    void clearImage();
     void advanceAnimation();
     void dumpWalls(const char* filename);
 

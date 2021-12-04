@@ -19,12 +19,11 @@ struct Image {
     }
 
     // redraws the image with the maze
-    void clear(Grid* grid, int gridScale, int (*to_grid)(int, int, int), int numThreads) {
+    void clear(Grid* grid, int gridScale, int (*to_grid)(int, int, int)) {
 
         int numPixels = width * height;
 
         float* ptr = data;
-        omp_set_num_threads(numThreads);
         #pragma omp parallel for shared(ptr)
         for (int i=0; i<numPixels; i++) {
             ptr[i*4] = 1;
