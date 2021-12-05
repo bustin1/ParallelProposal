@@ -88,7 +88,7 @@ bool Robot::visited(int rayPos) {
 
 // turn dtheta degrees from it's own angle and move with it's speed
 // note that dtheta must be clamped with yaw rate
-bool Robot::move(double dtheta, double speed) {
+bool Robot::move(float dtheta, float speed) {
 
     double candidate_angle = double_mod(this->angle + dtheta, 2 * PI);
 
@@ -121,7 +121,7 @@ bool Robot::move(double dtheta, double speed) {
 
 }
 
-void Robot::move_greedy(double& dtheta, double& speed) {
+void Robot::move_greedy(float& dtheta, float& speed) {
 
 
     int bestRayInd = 0;

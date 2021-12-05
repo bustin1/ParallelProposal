@@ -171,13 +171,13 @@ void renderPicture() {
 
     double endClearTime = CycleTimer::currentSeconds();
 
-//    // update particle positions and state
-//    if (gDisplay.updateSim) {
-//        gDisplay.renderer->advanceAnimation();
-//    }
-//    if (gDisplay.pauseSim)
-//        gDisplay.updateSim = false;
-//
+    // update particle positions and state
+    if (gDisplay.updateSim) {
+        gDisplay.renderer->advanceAnimation();
+    }
+    if (gDisplay.pauseSim)
+        gDisplay.updateSim = false;
+
     double endSimTime = CycleTimer::currentSeconds();
 
     // render the particles< into the image
@@ -187,7 +187,7 @@ void renderPicture() {
 
     if (gDisplay.printStats) {
         printf("Clear:    %.3f ms\n", 1000.f * (endClearTime - startTime));
-//        printf("Advance:  %.3f ms\n", 1000.f * (endSimTime - endClearTime));
+        printf("Advance:  %.3f ms\n", 1000.f * (endSimTime - endClearTime));
         printf("Render:   %.3f ms\n", 1000.f * (endRenderTime - endSimTime));
     }
 }
