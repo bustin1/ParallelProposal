@@ -12,8 +12,7 @@
 
 
 // in display.cpp
-void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats,
-                                int numThreads);
+void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats);
 
 
 int main(int argc, char *argv[]) {
@@ -110,12 +109,12 @@ int main(int argc, char *argv[]) {
 
     Robot* robot = new Robot();
     Pfilter* filter = new Pfilter(robot, grid, numParticles, gridScale, 
-                                    particleScale, numRays, debug, numThreads);
+                                    particleScale, numRays, debug);
 
     RefRenderer* renderer = new RefRenderer(filter);
 
     glutInit(&argc, argv);
-    startRendererWithDisplay(renderer, debug, printStats, numThreads);
+    startRendererWithDisplay(renderer, debug, printStats);
 
 
 

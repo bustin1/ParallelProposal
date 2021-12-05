@@ -24,8 +24,7 @@ Pfilter::Pfilter(Robot* robot, Grid* grid,
                 const int gridScale, 
                 const int particleScale,
                 const int numRays,
-                const int DEBUG,
-                int numThreads)  
+                const int DEBUG)
                 : numParticles (numParticles),
                 gridScale(gridScale),
                 particleScale(particleScale),
@@ -34,8 +33,8 @@ Pfilter::Pfilter(Robot* robot, Grid* grid,
                 maxNumParticles (numParticles),
                 imgWidth (grid->width * gridScale),
                 sample_freq(5),
-                maxRayLen (10 * gridScale),
-                numThreads(numThreads){
+                maxRayLen (10 * gridScale) {
+
 
     this->particleLocations = new int[numParticles];
     this->particleOrientations = new double[numParticles];
@@ -412,7 +411,6 @@ void Pfilter::reweight() {
     const double variance = maxRayLen * numRays * 5;
 
     double currentTime = CycleTimer::currentSeconds();
-    omp_set_num_threads(this->numThreads);
 #pragma omp parallel
 {
     #pragma omp for

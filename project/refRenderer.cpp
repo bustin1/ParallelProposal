@@ -35,10 +35,10 @@ Pfilter* RefRenderer::get_filter() {
 }
 
 
-void RefRenderer::clearImage(int numThreads) {
+void RefRenderer::clearImage() {
     Grid* grid = filter->get_grid();
     int scale = filter->get_grid_scale();
-    image->clear(grid, scale, to_grid, numThreads);
+    image->clear(grid, scale, to_grid);
 }
 
 void RefRenderer::advanceAnimation() {

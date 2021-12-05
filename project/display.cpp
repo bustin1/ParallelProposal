@@ -14,7 +14,6 @@ static struct {
     int width;
     int height;
     int DEBUG;
-    int numThreads;
     bool updateSim;
     bool printStats;
     bool pauseSim;
@@ -165,7 +164,7 @@ void renderPicture() {
     double startTime = CycleTimer::currentSeconds();
 
     // clear screen
-    gDisplay.renderer->clearImage(gDisplay.numThreads);
+    gDisplay.renderer->clearImage();
 
     double endClearTime = CycleTimer::currentSeconds();
 
@@ -190,8 +189,7 @@ void renderPicture() {
     }
 }
 
-void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats,
-                                int numThreads) {
+void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats) {
 
     // setup the display
 
@@ -205,7 +203,6 @@ void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats,
     gDisplay.width = img->width;
     gDisplay.height = img->height;
     gDisplay.DEBUG = DEBUG;
-    gDisplay.numThreads = numThreads;
 
     // configure GLUT
 
