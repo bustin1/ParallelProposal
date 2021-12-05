@@ -8,6 +8,7 @@
 
 // converts an image pixel to a grid location
 // i := index of location in image space
+
 int to_grid(int imgWidth, int i, int gridScale) {
 
     int gridWidth = imgWidth / gridScale;
@@ -23,8 +24,7 @@ int to_grid(int imgWidth, int i, int gridScale) {
 }
 
 
-// given converts a grid location to a image location (bot left)
-// i := index of location in grid space
+
 int to_img(int gridWidth, int i, int gridScale) {
 
     int imgWidth = gridWidth * gridScale;
@@ -41,8 +41,8 @@ int to_img(int gridWidth, int i, int gridScale) {
 
 
 // returns a random number between 0 and 1
-double rand_num() {
-    return (double) rand()/RAND_MAX;
+float rand_num() {
+    return (float) rand()/RAND_MAX;
 }
 
 
@@ -155,7 +155,7 @@ double dist2d(int p1, int p2, int imgWidth) {
 }
 
 // returns a random angle
-double rand_angle() {
+float rand_angle() {
     return 2.0f * PI * rand_num();
 }
 

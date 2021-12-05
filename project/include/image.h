@@ -20,25 +20,6 @@ struct Image {
     // redraws the image with the maze
     void clear(Grid* grid, int gridScale, int (*to_grid)(int, int, int)) {
 
-        int numPixels = width * height;
-
-        float* ptr = data;
-        for (int i=0; i<numPixels; i++) {
-            ptr[0] = 1;
-            ptr[1] = 1;
-            ptr[2] = 1;
-            ptr[3] = 1;
-
-            int g = to_grid(width, i, gridScale);
-            if (grid->is_wall_at(g)) {
-                ptr[0] = 0;
-                ptr[1] = 0;
-                ptr[2] = 0;
-                ptr[3] = 0;
-            }
-
-            ptr += 4;
-        }
     }
 
     int width;
