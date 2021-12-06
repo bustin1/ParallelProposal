@@ -12,6 +12,9 @@
 #include <algorithm>
 #include <curand.h>
 #include <curand_kernel.h>
+#include <thrust/device_vector.h>
+#include <thrust/reduce.h>
+#include <thrust/functional.h>
 #include "include/cycleTimer.h"
 
 
@@ -19,7 +22,8 @@
 #include "include/particleFilter.h"
 
 #define BLOCKSIZE 256
-
+#define SCAN_BLOCK_DIM BLOCKSIZE
+#include "exclusiveScan.cu_inl"
 
 // TODO: robot explore unvisited states
 // TODO: once particles converge, guess best location
@@ -42,6 +46,7 @@ struct PConstants {
     int num_open;
     int num_closed;
     int numParticles;
+    int maxRayLen;
 };
 
 __constant__ PConstants pparams;
@@ -98,6 +103,7 @@ Pfilter::Pfilter(Robot* r, Grid* g,
                 sample_freq(5),
                 maxRayLen (10 * gridScale) {
 
+
     cudaMalloc(&particleLocations, sizeof(int) * numParticles);
     cudaMalloc(&particleOrientations, sizeof(float) * numParticles);
     cudaMalloc(&rays, sizeof(float) * numParticles * numRays);
@@ -139,6 +145,7 @@ Pfilter::Pfilter(Robot* r, Grid* g,
     globs.weights = weights;
     globs.states = states;
     globs.numParticles = numParticles;
+    globs.maxRayLen = maxRayLen;
 
     cudaMemcpyToSymbol(pparams, &globs, sizeof(PConstants));
 
@@ -403,6 +410,17 @@ __device__ double device_gaussian1d(float mean, float variance, int threadId) {
     return newx;
 }
 
+__device__ double device_gaussian2d(int mean, int imgWidth, double variance, int threadId) {
+
+    int x = mean % imgWidth;
+    int y = mean / imgWidth;
+    
+    double newx = device_gaussian1d(x, variance, threadId);
+    double newy = device_gaussian1d(y, variance, threadId);
+
+    return newx + round(newy) * imgWidth;
+}
+
 __global__ void kernelTransition(float dtheta, float speed, int numParticles) {
 
     int threadId = threadIdx.x + blockDim.x * blockIdx.x;
@@ -556,8 +574,6 @@ int Pfilter::getClosestIntersection(int pLoc, double angle) {
     return closestY * this->imgWidth + closestX;
 }
 
-
-
 void Pfilter::firerays(int loc, int* ptr, double angle_bias) {
 
     // 1) assume 360 degree view
@@ -572,27 +588,139 @@ void Pfilter::firerays(int loc, int* ptr, double angle_bias) {
 }
 
 
-void Pfilter::reweight() {
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-    // get robo observation
-    int* roboRay = this->robot->get_rays();
-    int roboPos = this->robot->get_pos();
-    this->firerays(roboPos, roboRay, this->robot->get_angle());
+__device__ int device_getSingleIntersection(int x1, int y1, int x2, int y2,
+                                   int x3, int y3, int x4, int y4) {
 
-    // 1) fire ray for robot
-    double* roboRayLen = new double[numRays];
-    for (int i=0; i<numRays; i++) {
-        double rRayLen = dist2d(roboPos, roboRay[i], this->imgWidth);
-        roboRayLen[i] = rRayLen;
+    double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+
+    // 1) colinear :(
+    if (denom == 0) {
+        return -1;
     }
 
-    // 2) TODO: is this the best variance for particle weight?
-    const double variance = maxRayLen * numRays * 5;
+    double numerator = (x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4);
+    double t = numerator / denom;
+    double u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+    if (t > 0 && t < 1 && u > 0) {
+        // 2) Found points!
+        int x = round(x1 + t * (double)(x2 - x1));
+        int y = round(y1 + t * (double)(y2 - y1));
+        int imgWidth = pparams.imgWidth;
+        return x + imgWidth*y;
+    }
+    
+    // 3) segments too far apart :(
+    return -1;
+}
 
-    for (int i=0; i<this->numParticles; i++) {
+__device__ int device_getClosestIntersection(int pLoc, double angle) {
 
-        int pLoc = this->particleLocations[i];
-        firerays(pLoc, rays + i*this->numRays, this->particleOrientations[i]);
+    int num_closed = pparams.num_closed;
+    int* closed = pparams.closed;
+    int imgWidth = pparams.imgWidth;
+    int maxRayLen = pparams.maxRayLen;
+    int gridWidth = pparams.imgWidth / pparams.gridScale;
+    int gridScale = pparams.gridScale;
+
+    double dir_x = cos(angle);
+    double dir_y = sin(angle);
+
+    // 1) particle locations
+    int x3 = device_get_x(pLoc, imgWidth);
+    int y3 = device_get_y(pLoc, imgWidth);
+    int x4 = x3 + maxRayLen * dir_x;
+    int y4 = y3 + maxRayLen * dir_y;
+
+    // 2) save best intersection
+    int closestX = x4;
+    int closestY = y4; 
+    int closestDist = maxRayLen * maxRayLen;
+
+    for (int i=0; i<num_closed; i++) {
+
+        int wLoc = closed[i];
+
+        // WEIRDEST BUG: line intersection will wrap since it's a 1d contiguous array
+        int x1 = device_get_x(wLoc, gridWidth) * gridScale; // left_x
+        int y1 = device_get_y(wLoc, gridWidth) * gridScale; // bot_y
+        int x2 = x1 + gridScale; // right_x
+        int y2 = y1 + gridScale; // top_y
+
+        int a[4][4] = {{x1+1,y1-1,x1+1,y2+1}, 
+                      {x1-1,y2-1,x2+1,y2-1}, 
+                      {x2-1,y2+1,x2-1,y1-1},
+                      {x2+1,y1+1,x1-1,y1+1}};
+
+        for (int j=0; j<4; j++) {
+
+            int intersection = device_getSingleIntersection(a[j][0], a[j][1], 
+                                                            a[j][2], a[j][3], 
+                                                            x3, y3, x4, y4);
+
+            if (intersection >= 0) {
+
+                int x = device_get_x(intersection, imgWidth);
+                int y = device_get_y(intersection, imgWidth);
+
+                int sx = x3-x;
+                int sy = y3-y;
+                int dist = sx*sx + sy*sy;
+
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestX = x;
+                    closestY = y;
+                }
+            }
+        }
+
+    }
+
+    return closestY * imgWidth + closestX;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+__device__ float device_dist2d(int p1, int p2, int imgWidth) {
+
+    int x1 = p1 % imgWidth;
+    int y1 = p1 / imgWidth;
+    
+    int x2 = p2 % imgWidth;
+    int y2 = p2 / imgWidth;
+
+    return sqrtf((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+
+}
+
+__global__ void kernelReweight(float* roboRayLen, int numRays, int numParticles, float variance, int sample_freq) {
+
+    int threadId = threadIdx.x + blockDim.x * blockIdx.x;
+    int rayId = threadId % numRays;
+    int particleId = threadId / numRays;
+    int imgWidth = pparams.imgWidth;
+    float* particleOrientations = pparams.particleOrientations;
+    int* particleLocations = pparams.particleLocations;
+    int* rays = pparams.rays;
+    float* weights = pparams.weights;
+
+    if (particleId < numParticles) {
+
+        const double dtheta = 2 * PI / numRays;
+        int pLoc = particleLocations[particleId];
+        float angle_bias = particleOrientations[particleId];
+
+        double angle = rayId * dtheta + angle_bias;
+        int coord = device_getClosestIntersection(pLoc, angle);
+        rays[threadId] = coord;
 
         // reweight with gaussian distribution
         // 1) we assume that given the particle's location
@@ -600,33 +728,70 @@ void Pfilter::reweight() {
         // 2) this follows ~ e^{-r * p}, where r := robo observation
         // and p := particle's observation
 
-        double exp = 0;
-        for (int j=0; j<this->numRays; j++) {
+        __shared__ uint sInput[BLOCKSIZE];
+        __shared__ uint sOutput[BLOCKSIZE];
+        __shared__ uint sScratch[2 * BLOCKSIZE];
 
-            int pRay = rays[i*this->numRays+j];
-            double pRayLen = dist2d(pRay, pLoc, this->imgWidth);
+        int pRayLen = device_dist2d(coord, pLoc, imgWidth);
+        int rayDiff = roboRayLen[rayId] - pRayLen;
 
-            double rayDiff = roboRayLen[j] - pRayLen;
-            exp += pow(rayDiff, 2);
+        sInput[threadIdx.x] = (uint) powf(rayDiff,2);
 
-        }
-        this->weights[i] *= pow(E, -exp / variance / sample_freq); // TODO: tune
-        if (this->particleWallHit[i] == 1) {
-            this->weights[i] /= 5;
+        __syncthreads();
+        sharedMemExclusiveScan(threadIdx.x, sInput, sOutput, sScratch, SCAN_BLOCK_DIM);
+        __syncthreads();
+
+        if (rayId == 0) { // important that numRays == 16
+            double exp = sOutput[min(threadIdx.x+numRays, BLOCKSIZE-1)] - sOutput[threadIdx.x];
+            weights[particleId] *= pow(E, -exp / variance / sample_freq); // TODO: tune
         }
 
     }
 
 }
 
-/*
+
+void Pfilter::reweight() {
+
+    // get robo observation
+    int* roboRay = robot->get_rays();
+    int roboPos = robot->get_pos();
+    firerays(roboPos, roboRay, this->robot->get_angle());
+
+    // 1) fire ray for robot
+    float* roboRayLen = new float[numRays];
+    for (int i=0; i<numRays; i++) {
+        float rRayLen = dist2d(roboPos, roboRay[i], this->imgWidth);
+        roboRayLen[i] = rRayLen;
+    }
+
+    // 2) TODO: is this the best variance for particle weight?
+    const float variance = maxRayLen * numRays * 5;
+
+    float* cudaRoboRayLen;
+    cudaMalloc(&cudaRoboRayLen, sizeof(float) * numRays);
+    dim3 blockDim(BLOCKSIZE);
+    dim3 gridDim((numParticles * numRays + BLOCKSIZE - 1) / BLOCKSIZE);
+    kernelReweight<<<gridDim, blockDim>>>(cudaRoboRayLen, numRays, numParticles, variance, sample_freq);
+    cudaDeviceSynchronize();
+
+    cudaFree(cudaRoboRayLen);
+
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 bool Pfilter::confidence(float param) {
 
+    /*
     // 1) test if it is a majority
     int count = 0;
-    int res = to_grid(this->imgWidth, this->particleLocations[particleGuess], this->gridScale);
-    for (int i=0; i<this->numParticles; i++) {
-        int testLoc = to_grid(this->imgWidth, this->particleLocations[i], this->gridScale);
+
+    int res = to_grid(imgWidth, pLoc, gridScale);
+    for (int i=0; i<numParticles; i++) {
+        int testLoc = to_grid(imgWidth, this->particleLocations[i], this->gridScale);
         if (testLoc == res) {
             count++;
         }
@@ -636,77 +801,105 @@ bool Pfilter::confidence(float param) {
 //    printf("your confidence is %d/%d = %f\n", count, this->numParticles, c);
     return c > param;
 
+    */
+    return false;
+}
+
+
+__global__ void kernelSample(int numParticles, float bestWeight, int sampling_pos_variance, int* particleGuess) {
+
+    int threadId = threadIdx.x + blockDim.x * blockIdx.x;
+    float* weights = pparams.weights;
+
+    // 3) find the best particle (GREEDY)
+    printf("best weight is %f\n", bestWeight);
+    if (weights[threadId] == bestWeight) {
+        *particleGuess = threadId;
+        // printf("best weight is %f\n", best_weight);
+    }
+
+
+    float* running_weights = pparams.weights;
+    int* particleLocations = pparams.particleLocations;
+    float* particleOrientations = pparams.particleOrientations;
+    int gridScale = pparams.gridScale;
+    int imgWidth = pparams.imgWidth;
+
+    // 4) resample every particle
+    float rand = device_rand_num(threadId) * running_weights[numParticles-1];
+    int bestLoc = 0;
+    int bestAngle = 0;
+    for (int i=0; i<numParticles; i++) {
+        if (rand < running_weights[i]) {
+            float candidate_random_pos;
+            do {
+                // TODO: variance is based on gridScale. Is this a good hueristic?
+                candidate_random_pos = device_gaussian2d(particleLocations[i], imgWidth, sampling_pos_variance, threadId);
+            } while (device_to_grid(imgWidth, candidate_random_pos, gridScale) == 1);
+            
+            bestLoc = round(candidate_random_pos);
+            bestAngle = device_gaussian1d(particleOrientations[i], 0.1, threadId); // ~6 degrees
+            break;
+        }
+    }
+    __syncthreads();
+
+    // 4) update particle locations
+    particleLocations[threadId] = bestLoc;
+    particleOrientations[threadId] = bestAngle;
+
 }
 
 void Pfilter::sample() {
-    
-    // 0) check if we are confident in the robot location
-    if (confidence(.5)) {
 
+    // 0) check if we are confident in the robot location
+    /*
+    cudaMemcpy(&pLoc, &particleLocations[particleGuess], sizeof(int), cudaMemcpyDeviceToHost);
+    if (confidence(.5, pLoc)) {
         // in real life we would base on sensors but this isn't a robo class
-        if (to_grid(this->imgWidth, this->particleLocations[this->particleGuess], this->gridScale)
-                == to_grid(this->imgWidth, this->robot->get_pos(), this->gridScale)) {
+        int pLoc;
+        if (to_grid(imgWidth, pLoc, gridScale) == to_grid(imgWidth, robot->get_pos(), gridScale)) {
             this->particleGuess = 0;
-            this->particleLocations[0] = robot->get_pos();
-            this->particleOrientations[0] = robot->get_angle();
-            this->sampling_pos_variance = 2;
-            this->numParticles = 1;
-            this->i_am_speed = true;
+
+            int robopos = robot->get_pos();
+            float roboangle = robot->get_angle();
+            cudaMemcpy(particleLocations, &robopos, sizeof(int), cudaMemcpyHostToDevice);
+            cudaMemcpy(particleOrientations, &roboangle, sizeof(int), cudaMemcpyHostToDevice);
+            sampling_pos_variance = 2;
+            numParticles = 1;
+            i_am_speed = true;
             printf("wow! ur a cool robot :p You win!\n");
         } else if (confidence(.75)) {
-            this->uniform_sample();
+            uniform_sample();
         }
         return;
     }
+    */
 
-    // 1) find the best particle (GREEDY)
-    double best_weight = 0;
-    for (int i=0; i<this->numParticles; i++) {
-        if (best_weight < this->weights[i]) {
-            best_weight = this->weights[i];
-            this->particleGuess = i;             
-        }
-
-    }
-
-//    printf("best weight is %f\n", best_weight);
+    // 1) find best weight
+    printf("\nfdsafd\n");
+    float bestWeight = thrust::reduce(weights, weights + numParticles, 0, thrust::maximum<float>());
 
     // 2) calculate running weights
-    double* running_weights = weights;
-    for (int i=1; i<this->numParticles; i++) {
-        running_weights[i] += running_weights[i-1];
-    }
-    
-    // 3) resample every particle
-    int* newParticleLocations = new int[numParticles];
-    double* newParticleOrientations = new double[this->numParticles];
-    for (int j=0; j<this->numParticles; j++) {
-        double rand = rand_num() * running_weights[this->numParticles-1];
-        for (int i=0; i<numParticles; i++) {
-            if (rand < running_weights[i]) {
-                int candidate_random_pos;
-                do {
-                    // TODO: variance is based on gridScale. Is this a good hueristic?
-                    candidate_random_pos = gaussian2d(this->particleLocations[i], this->imgWidth, this->sampling_pos_variance);
-                } while (grid->is_wall_at(to_grid(this->imgWidth, candidate_random_pos, this->gridScale)));
-                
-                newParticleLocations[j] = round(candidate_random_pos);
-                newParticleOrientations[j] = gaussian1d(this->particleOrientations[i], 0.1); // ~6 degrees
-                break;
-            }
-        }
-    }
+    thrust::exclusive_scan(thrust::device, weights, weights + numParticles, weights, 0); 
+    // printf("first: %f second: %f\n", weights[]);
 
-    // 4) update particle locations
-    for (int i=0; i<this->numParticles; i++) {
-        this->particleLocations[i] = newParticleLocations[i];
-        this->particleOrientations[i] = newParticleOrientations[i];
-    }
+    int* d_particleGuess;
+    cudaMalloc(&d_particleGuess, sizeof(int));
+    dim3 blockDim(BLOCKSIZE);
+    dim3 gridDim((numParticles + BLOCKSIZE - 1) / BLOCKSIZE);
+    kernelSample<<<gridDim, blockDim>>>(numParticles, bestWeight, sampling_pos_variance, d_particleGuess);
+    cudaMemcpy(&particleGuess, d_particleGuess, sizeof(int), cudaMemcpyDeviceToHost);
+    printf("particle guess is %d\n", particleGuess);
+    cudaFree(d_particleGuess);
+    cudaDeviceSynchronize();
 
 }
-*/
 
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 
 void Pfilter::update() {
@@ -717,16 +910,16 @@ void Pfilter::update() {
 
 
     // 2) Reweight (fire rays and check intersection)
-//    this->reweight(); 
-//
-//    // 3) resample
-//    this->sample_counter++; // must hit wall to activate a sample
-//    if (numParticles > 1 && this->DEBUG != 1 && sample_counter >= this->sample_freq) {
-//        this->sample();
-//        this->sample_counter = 0;
-//        this->reset_weights();
-////        this->robot->print_stuff();
-//    }
+    reweight(); 
+
+    // 3) resample
+    sample_counter++; // must hit wall to activate a sample
+    if (numParticles > 1 && DEBUG != 1 && sample_counter >= sample_freq) {
+        sample();
+        // this->sample_counter = 0;
+        // this->reset_weights();
+        // this->robot->print_stuff();
+    }
 
 }
 

@@ -70,7 +70,6 @@ void handleDisplay() {
     glRasterPos2i(0, 0);
     glDrawPixels(width, height, GL_RGBA, GL_FLOAT, img->data);
 
-    /*
     if (gDisplay.DEBUG > 0) {
 
         glColor3f(0, 1, 0);
@@ -79,9 +78,21 @@ void handleDisplay() {
         Pfilter* filter = gDisplay.renderer->get_filter();
         int numParticles = filter->get_num_particles();
         int numRays = filter->get_num_rays();
-        int* pLoc = filter->get_particle_locations();
+        int* cudapLoc = filter->get_particle_locations();
         int imageWidth = img->width;
-        int* rays = filter->get_rays();
+        int* cudaRays = filter->get_rays();
+
+        int* rays = new int[numParticles * numRays];
+        cudaMemcpy(rays,
+               cudaRays,
+               numParticles * numRays * sizeof(int),
+               cudaMemcpyDeviceToHost);
+
+        int* pLoc = new int[numParticles];
+        cudaMemcpy(pLoc,
+               cudapLoc,
+               sizeof(int) * numParticles,
+               cudaMemcpyDeviceToHost);
 
         // 2) particle rays
         for (int i=0; i<numParticles; i++) {
@@ -120,7 +131,6 @@ void handleDisplay() {
         }
 
     }
-    */
 
 
     double currentTime = CycleTimer::currentSeconds();
