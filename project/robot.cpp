@@ -31,9 +31,7 @@ void Robot::init(const int numRays,
 
     int gridSize = grid->num_closed + grid->num_open;
     this->visitedStates = new bool[gridSize];
-    for (int i=0; i<gridSize; i++) {
-        this->visitedStates[i] = (grid->walls[i] == 1);
-    }
+    this->reset_visited();
 
     if (pos < 0) {
         // top left
@@ -43,6 +41,13 @@ void Robot::init(const int numRays,
     }
 
     this->angle = rand_angle();
+}
+
+void Robot::reset_visited() {
+    int gridSize = grid->num_closed + grid->num_open;
+    for (int i=0; i<gridSize; i++) {
+        this->visitedStates[i] = (grid->walls[i] == 1);
+    }
 }
 
 int* Robot::get_rays() {
@@ -167,6 +172,12 @@ void Robot::move_greedy(double& dtheta, double& speed) {
     // 3) take that direction
     speed = 2;
     this->hitWall = move(dtheta, speed);
+
+    //4) .9 chance that the robot forgets where he's been
+    if (rand_num() > .95) {
+        this->reset_visited();
+        printf("Shucks :( ... I forgot where i've been");
+    }
 
 }
 
