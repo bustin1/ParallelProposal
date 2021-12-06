@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <curand.h>
 #include <curand_kernel.h>
-#include <thrust/device_vector.h>
+#include <thrust/device_ptr.h>
 #include <thrust/reduce.h>
 #include <thrust/functional.h>
 #include "include/cycleTimer.h"
@@ -783,15 +783,18 @@ void Pfilter::reweight() {
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-bool Pfilter::confidence(float param) {
+/*
+__device__ bool device_confidence(float param, int particleGuess) {
 
-    /*
     // 1) test if it is a majority
     int count = 0;
-
-    int res = to_grid(imgWidth, pLoc, gridScale);
+    int imgWidth = pparams.imgWidth;
+    int* particleLocations = pparams.particleLocations;
+    int gridScale = pparams.gridScale;
+    int res = device_to_grid(imgWidth, particleLocations[particleGuess], gridScale);
+    int numParticles = pparams.numParticles;
     for (int i=0; i<numParticles; i++) {
-        int testLoc = to_grid(imgWidth, this->particleLocations[i], this->gridScale);
+        int testLoc = device_to_grid(imgWidth, particleLocations[i], gridScale);
         if (testLoc == res) {
             count++;
         }
@@ -801,70 +804,113 @@ bool Pfilter::confidence(float param) {
 //    printf("your confidence is %d/%d = %f\n", count, this->numParticles, c);
     return c > param;
 
-    */
-    return false;
 }
 
+__global__ void kernelSample(int* particleGuess, int roboPos, int roboAngle, int* numParticles) {
 
-__global__ void kernelSample(int numParticles, float bestWeight, int sampling_pos_variance, int* particleGuess) {
-
-    int threadId = threadIdx.x + blockDim.x * blockIdx.x;
-    float* weights = pparams.weights;
-
-    // 3) find the best particle (GREEDY)
-    printf("best weight is %f\n", bestWeight);
-    if (weights[threadId] == bestWeight) {
-        *particleGuess = threadId;
-        // printf("best weight is %f\n", best_weight);
-    }
-
-
-    float* running_weights = pparams.weights;
+    // 0) check if we are confident in the robot location
+    int imgWidth = pparams.imgWidth;
     int* particleLocations = pparams.particleLocations;
     float* particleOrientations = pparams.particleOrientations;
+    float* weights = pparams.weights;
     int gridScale = pparams.gridScale;
-    int imgWidth = pparams.imgWidth;
+    const int n = *numParticles;
+    int pguess = *particleGuess;
+    int res = device_to_grid(imgWidth, particleLocations[pguess], gridScale);
 
-    // 4) resample every particle
-    float rand = device_rand_num(threadId) * running_weights[numParticles-1];
-    int bestLoc = 0;
-    int bestAngle = 0;
-    for (int i=0; i<numParticles; i++) {
-        if (rand < running_weights[i]) {
-            float candidate_random_pos;
-            do {
-                // TODO: variance is based on gridScale. Is this a good hueristic?
-                candidate_random_pos = device_gaussian2d(particleLocations[i], imgWidth, sampling_pos_variance, threadId);
-            } while (device_to_grid(imgWidth, candidate_random_pos, gridScale) == 1);
-            
-            bestLoc = round(candidate_random_pos);
-            bestAngle = device_gaussian1d(particleOrientations[i], 0.1, threadId); // ~6 degrees
-            break;
+    if (device_confidence(.5, pguess)) {
+
+        // in real life we would base on sensors but this isn't a robo class
+        if (device_to_grid(imgWidth, particleLocations[pguess], gridScale)
+                == device_to_grid(imgWidth, roboPos, gridScale)) {
+            *particleGuess = 0;
+            particleLocations[0] = roboPos;
+            particleOrientations[0] = roboAngle; 
+            *numParticles = 1;
+            printf("wow! ur a cool robot :p You win!\n");
+            return;
         }
     }
-    __syncthreads();
+
+    // 1) find the best particle (GREEDY)
+    float best_weight = 0;
+    for (int i=0; i<n; i++) {
+        if (best_weight < weights[i]) {
+            best_weight = weights[i];
+            *particleGuess = i;             
+        }
+
+    }
+
+//    printf("best weight is %f\n", best_weight);
+
+    // 2) calculate running weights
+    float* running_weights = weights;
+    for (int i=1; i<n; i++) {
+        running_weights[i] += running_weights[i-1];
+    }
+    
+    // 3) resample every particle
+    int newParticleLocations[n];
+    float newParticleOrientations[n];
+    for (int j=0; j<n; j++) {
+        float rand = device_rand_num(0) * running_weights[this->numParticles-1];
+        for (int i=0; i<n; i++) {
+            if (rand < running_weights[i]) {
+                float candidate_random_pos;
+                do {
+                    // TODO: variance is based on gridScale. Is this a good hueristic?
+                    candidate_random_pos = device_gaussian2d(particleLocations[i], imgWidth, 2, 0);
+                } while (device_to_grid(imgWidth, candidate_random_pos, gridScale) == 1);
+                
+                newParticleLocations[j] = round(candidate_random_pos);
+                newParticleOrientations[j] = device_gaussian1d(particleOrientations[i], 0.1); // ~6 degrees
+                break;
+            }
+        }
+    }
 
     // 4) update particle locations
-    particleLocations[threadId] = bestLoc;
-    particleOrientations[threadId] = bestAngle;
+    for (int i=0; i<n; i++) {
+        particleLocations[i] = newParticleLocations[i];
+        particleOrientations[i] = newParticleOrientations[i];
+    }
+
+}
+*/
+
+bool Pfilter::confidence(float param) {
+
+    // 1) test if it is a majority
+    int count = 0;
+    int res = to_grid(this->imgWidth, this->particleLocations[particleGuess], this->gridScale);
+    for (int i=0; i<this->numParticles; i++) {
+        int testLoc = to_grid(this->imgWidth, this->particleLocations[i], this->gridScale);
+        if (testLoc == res) {
+            count++;
+        }
+    }
+
+    float c = (float) count / (float) numParticles;
+//    printf("your confidence is %d/%d = %f\n", count, this->numParticles, c);
+    return c > param;
 
 }
 
 void Pfilter::sample() {
-
+    
     // 0) check if we are confident in the robot location
-    /*
-    cudaMemcpy(&pLoc, &particleLocations[particleGuess], sizeof(int), cudaMemcpyDeviceToHost);
-    if (confidence(.5, pLoc)) {
-        // in real life we would base on sensors but this isn't a robo class
-        int pLoc;
-        if (to_grid(imgWidth, pLoc, gridScale) == to_grid(imgWidth, robot->get_pos(), gridScale)) {
-            this->particleGuess = 0;
 
-            int robopos = robot->get_pos();
-            float roboangle = robot->get_angle();
-            cudaMemcpy(particleLocations, &robopos, sizeof(int), cudaMemcpyHostToDevice);
-            cudaMemcpy(particleOrientations, &roboangle, sizeof(int), cudaMemcpyHostToDevice);
+    // move to device 
+
+    if (confidence(.5)) {
+
+        // in real life we would base on sensors but this isn't a robo class
+        if (to_grid(imgWidth, particleLocations[this->particleGuess], gridScale)
+                == to_grid(this->imgWidth, this->robot->get_pos(), gridScale)) {
+            particleGuess = 0;
+            particleLocations[0] = robot->get_pos();
+            particleOrientations[0] = robot->get_angle();
             sampling_pos_variance = 2;
             numParticles = 1;
             i_am_speed = true;
@@ -874,28 +920,68 @@ void Pfilter::sample() {
         }
         return;
     }
-    */
 
-    // 1) find best weight
-    printf("\nfdsafd\n");
-    float bestWeight = thrust::reduce(weights, weights + numParticles, 0, thrust::maximum<float>());
+    // 1) find the best particle (GREEDY)
+    double best_weight = 0;
+    for (int i=0; i<this->numParticles; i++) {
+        if (best_weight < this->weights[i]) {
+            best_weight = this->weights[i];
+            this->particleGuess = i;             
+        }
+
+    }
+
+//    printf("best weight is %f\n", best_weight);
 
     // 2) calculate running weights
-    thrust::exclusive_scan(thrust::device, weights, weights + numParticles, weights, 0); 
-    // printf("first: %f second: %f\n", weights[]);
+    double* running_weights = weights;
+    for (int i=1; i<this->numParticles; i++) {
+        running_weights[i] += running_weights[i-1];
+    }
+    
+    // 3) resample every particle
+    int* newParticleLocations = new int[numParticles];
+    double* newParticleOrientations = new double[this->numParticles];
+    for (int j=0; j<this->numParticles; j++) {
+        double rand = rand_num() * running_weights[this->numParticles-1];
+        for (int i=0; i<numParticles; i++) {
+            if (rand < running_weights[i]) {
+                int candidate_random_pos;
+                do {
+                    // TODO: variance is based on gridScale. Is this a good hueristic?
+                    candidate_random_pos = gaussian2d(this->particleLocations[i], this->imgWidth, this->sampling_pos_variance);
+                } while (grid->is_wall_at(to_grid(this->imgWidth, candidate_random_pos, this->gridScale)));
+                
+                newParticleLocations[j] = round(candidate_random_pos);
+                newParticleOrientations[j] = gaussian1d(this->particleOrientations[i], 0.1); // ~6 degrees
+                break;
+            }
+        }
+    }
 
-    int* d_particleGuess;
-    cudaMalloc(&d_particleGuess, sizeof(int));
-    dim3 blockDim(BLOCKSIZE);
-    dim3 gridDim((numParticles + BLOCKSIZE - 1) / BLOCKSIZE);
-    kernelSample<<<gridDim, blockDim>>>(numParticles, bestWeight, sampling_pos_variance, d_particleGuess);
-    cudaMemcpy(&particleGuess, d_particleGuess, sizeof(int), cudaMemcpyDeviceToHost);
-    printf("particle guess is %d\n", particleGuess);
-    cudaFree(d_particleGuess);
-    cudaDeviceSynchronize();
+    // 4) update particle locations
+    for (int i=0; i<this->numParticles; i++) {
+        this->particleLocations[i] = newParticleLocations[i];
+        this->particleOrientations[i] = newParticleOrientations[i];
+    }
 
 }
 
+void Pfilter::sample() {
+   
+    int* d_particleGuess;
+    int* d_numParticles;
+    cudaMalloc(&d_particleGuess, sizeof(int));
+    cudaMalloc(&d_numParticles, sizeof(int));
+    cudaMemcpy(d_particleGuess, &particleGuess, sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_numParticles, &numParticles, sizeof(int), cudaMemcpyHostToDevice);
+    int roboPos = robot->get_pos();
+    int roboAngle = robot->get_angle();
+    kernelSample<<<1,1>>>(d_particleGuess, roboPos, roboAngle); 
+    cudaMemcpy(&particleGuess, d_particleGuess, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&numParticles, d_numParticles, sizeof(int), cudaMemcpyDeviceToHost);
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
