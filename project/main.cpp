@@ -10,6 +10,7 @@
 #include "include/grid.h"
 #include "include/particleFilter.h"
 #include "include/platformgl.h"
+#include "include/gridGenerator.h"
 
 
 // in display.cpp
@@ -19,6 +20,7 @@ void startRendererWithDisplay(RefRenderer* renderer, int DEBUG, bool printStats)
 int main(int argc, char *argv[]) {
 
     char* inputFilename = NULL;
+    // char* outputFilename = NULL;
     bool help = false;
     int opt = 0;
     int numParticles = -1;
@@ -33,6 +35,9 @@ int main(int argc, char *argv[]) {
         case 'i':
             inputFilename = optarg;
             break;
+        // case 'o':
+        //     outputFilename = optarg;
+        //     break;
         case 'h':
             help = true;
             break;
@@ -58,6 +63,7 @@ int main(int argc, char *argv[]) {
     if (help) {
         printf("Usage: %s\n", argv[0]);
         printf("-h: print this message\n");
+        // printf("-o: <outputGridGenerator>");
         printf("-i: <inputFilename> File of 1s and 0s. 1 means wall, 0 means no wall. Example: tests/easy.txt\n");
         printf("-n: <numParticles> Number of particles to simulate. Example: 1000\n");
         printf("-r: <numRays> Number of rays out of each particle. Example: 20\n");
@@ -73,10 +79,18 @@ int main(int argc, char *argv[]) {
         printf("done\n");
     }
 
+    // FILE* grid_out = NULL;
+    // if (outputFilename != NULL) {
+    //     printf("Writing grid to file: %s ... ", outputFilename);
+    //     grid_out = fopen(outputFilename, "w");
+    //     printf("done\n");
+    // }
+
     int w = 5;
-    int h = 5;
+    int h = 5; 
 
     Grid* grid = new Grid();
+    generateGrid(w, h);
 
     if (fin == NULL) {
         printf("ERROR: Unable to read file: %s\n", inputFilename);
