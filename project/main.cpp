@@ -90,7 +90,9 @@ int main(int argc, char *argv[]) {
     int h = 5; 
 
     Grid* grid = new Grid();
+    const clock_t begin_time = clock();
     generateGrid(w, h);
+    std::cout << "Grid generation time: " << float( clock () - begin_time ) /  CLOCKS_PER_SEC << "\n";
 
     if (fin == NULL) {
         printf("ERROR: Unable to read file: %s\n", inputFilename);

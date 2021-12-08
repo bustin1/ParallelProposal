@@ -125,8 +125,6 @@ int generateRandomNumberInRange(int end) {
         return 0;
     }
 
-    std::cout << "end: " << end << "\n";
-
     int iSecret = rand() % end + 1;
     return iSecret;
 }
@@ -145,6 +143,9 @@ void generateGrid(int height, int width) {
 
     initRandomizer();
     // generateRandomNumberInRange(rng_seed);
+
+    width = 4000;
+    height = 4000;
 
     
     // int initial_point_h = 0, initial_point_w=0;
@@ -185,24 +186,25 @@ void generateGrid(int height, int width) {
         std::cout << "vector " << nearby_wall_list[i].x << ", " << nearby_wall_list[i].y << " \n";
     }
 
-    
+    int num_of_mistakes = 0;
 
     while (nearby_wall_list.size() > 0) {
 
         int random_wall_idx = generateRandomNumberInRange(nearby_wall_list.size()-1);
-        std::cout << "wall_eviction: " << random_wall_idx << "\n";
+        // std::cout << "wall_eviction: " << random_wall_idx << "\n";
 
-        printgrid(height, width, newgrid);
+        // printgrid(height, width, newgrid);
 
         position selected_wall = nearby_wall_list.at(random_wall_idx);
         if (visitedgrid[selected_wall.x][selected_wall.y] == 1) {
             nearby_wall_list.erase(nearby_wall_list.begin() + random_wall_idx);
+            num_of_mistakes++;
             continue;
         }
 
         bool canEvict = canEvictWall(selected_wall, height, width, newgrid);
 
-        std::cout << "canEvict: " << canEvict << "\n";
+        // std::cout << "canEvict: " << canEvict << "\n";
 
         if (canEvict) {
             newgrid[selected_wall.x][selected_wall.y] = 0;
@@ -212,5 +214,5 @@ void generateGrid(int height, int width) {
         visitedgrid[selected_wall.x][selected_wall.y] = 1;
         nearby_wall_list.erase(nearby_wall_list.begin() + random_wall_idx);
     }
-    
+    printf("\nNum mistakes: %d\n", num_of_mistakes);
 }
