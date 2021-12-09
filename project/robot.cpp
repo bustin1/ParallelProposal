@@ -174,10 +174,12 @@ void Robot::move_greedy(float& dtheta, float& speed) {
     this->hitWall = move(dtheta, speed);
 
     //4) .9 chance that the robot forgets where he's been
+    /*
     if (rand_num() > .95) {
         this->reset_visited();
         printf("Shucks :( ... I forgot where i've been\n");
     }
+    */
 
 }
 
