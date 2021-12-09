@@ -89,6 +89,55 @@ void add_nearby_wall_to_list(int height, int width, position removed_wall, vecto
     }
 }
 
+bool isSkip(position cur_pos, int skip_x, int skip_y) {
+    if (cur_pos.x == skip_x && cur_pos.y == skip_y) {
+        return true;
+    }
+    return false;
+}
+
+void add_nearby_wall_to_list_with_skip(int height, int width, position removed_wall, vector<position>& nearby_wall_list, std::vector<std::vector<int> >& newgrid, std::vector<std::vector<int> >& visitedgrid, int skip_x, int skip_y) {
+
+    int x = removed_wall.x;
+    int y = removed_wall.y;
+
+    if (x > 0) {
+        position x1;
+        x1.x = x-1;
+        x1.y = y;
+        if (newgrid[x1.x][x1.y] == 1 && visitedgrid[x1.x][x1.y] == 0 && !isSkip(x1, skip_x, skip_y)) {
+            nearby_wall_list.push_back(x1);
+        }
+    }
+
+    if (x < height - 1) {
+        position x1;
+        x1.x = x+1;
+        x1.y = y;
+        if (newgrid[x1.x][x1.y] == 1 && visitedgrid[x1.x][x1.y] == 0 && !isSkip(x1, skip_x, skip_y)) {
+            nearby_wall_list.push_back(x1);
+        }
+    }
+
+    if (y > 0) {
+        position x1;
+        x1.x = x;
+        x1.y = y-1;
+        if (newgrid[x1.x][x1.y] == 1 && visitedgrid[x1.x][x1.y] == 0 && !isSkip(x1, skip_x, skip_y)) {
+            nearby_wall_list.push_back(x1);
+        }
+    }
+
+    if (y < width - 1) {
+        position x1;
+        x1.x = x;
+        x1.y = y+1;
+        if (newgrid[x1.x][x1.y] == 1 && visitedgrid[x1.x][x1.y] == 0 && !isSkip(x1, skip_x, skip_y)) {
+            nearby_wall_list.push_back(x1);
+        }
+    }
+}
+
 bool canEvictWall(position wall_selection, int height, int width, std::vector<std::vector<int> >& newgrid) {
 
     int x = wall_selection.x;
@@ -136,6 +185,19 @@ void printgrid(int height, int width, std::vector<std::vector<int> >& newgrid) {
     std::cout << "\n";
 
     for (int i=0; i<newgrid.size(); i++) {
+        for (int j=0; j<width; j++) {
+            std::cout << newgrid[i][j] << " ";
+        }
+        std::cout << "\n";
+    }
+}
+
+void printgrid_with_proc(int height, int width, std::vector<std::vector<int> >& newgrid, int procID) {
+
+    std::cout << "\n";
+
+    for (int i=0; i<newgrid.size(); i++) {
+        std::cout << "procID " << procID << ":  ";
         for (int j=0; j<width; j++) {
             std::cout << newgrid[i][j] << " ";
         }
@@ -213,6 +275,56 @@ void update_ghost_row_in_local_grid(position *ghost_data, int local_height, int 
         }
     }
 }
+
+int find_y_of_below_grid(int local_height, int width, std::vector<std::vector<int> >& newgrid) {
+
+    int pos_y = 0;
+    for (int i=0; i<width; i++) {
+        if (newgrid[local_height-1][i] == 0) {
+            pos_y = i;
+            break;
+        }
+    }
+    return pos_y;
+}
+
+int connect_grid_to_ghost_row(int cur_x, int cur_y, int local_height, int width, int first_y, std::vector<std::vector<int> >& newgrid, std::vector<std::vector<int> >& visitedgrid, vector<position>& nearby_wall_list, int procID) {
+
+    position selected_wall;
+    selected_wall.x = cur_x+1;
+    selected_wall.y = cur_y;
+
+    newgrid[selected_wall.x][selected_wall.y] = 0;
+    if (cur_y < first_y) {
+        add_nearby_wall_to_list_with_skip(local_height, width, selected_wall, nearby_wall_list, newgrid, visitedgrid, selected_wall.x, selected_wall.y+1);
+    } else if (cur_y > first_y) {
+        add_nearby_wall_to_list_with_skip(local_height, width, selected_wall, nearby_wall_list, newgrid, visitedgrid, selected_wall.x, selected_wall.y-1);
+    } else {
+        add_nearby_wall_to_list(local_height, width, selected_wall, nearby_wall_list, newgrid, visitedgrid);
+    }
+    visitedgrid[selected_wall.x][selected_wall.y] = 1;
+
+    cout << "procID: " << procID << " cur_y " << cur_y << " " << "first_y " << first_y << "\n";
+
+    // Move left
+    if (cur_y < first_y) {
+        for (int i=cur_y+1; i<=first_y; i++) {
+            selected_wall.y=i;
+            newgrid[selected_wall.x][selected_wall.y] = 0;
+            add_nearby_wall_to_list_with_skip(local_height, width, selected_wall, nearby_wall_list, newgrid, visitedgrid, selected_wall.x, selected_wall.y+1);
+            visitedgrid[selected_wall.x][selected_wall.y] = 1;
+        }
+    } else if (cur_y > first_y) {
+        for (int i=cur_y-1; i>=first_y; i--) {
+            selected_wall.y=i;
+            newgrid[selected_wall.x][selected_wall.y] = 0;
+            add_nearby_wall_to_list_with_skip(local_height, width, selected_wall, nearby_wall_list, newgrid, visitedgrid, selected_wall.x, selected_wall.y+1);
+            visitedgrid[selected_wall.x][selected_wall.y] = 1;
+        }
+    } else {
+        // Already connected in the previous step
+    }
+} 
 
 void generateGridParallel(int procID, int nproc, int height, int width) {
 
@@ -303,19 +415,13 @@ void generateGridParallel(int procID, int nproc, int height, int width) {
     }
 
     int num_of_mistakes = 0;
+    bool is_grid_connected = false;
 
     while (nearby_wall_list.size() > 0) {
 
         int random_wall_idx = generateRandomNumberInRange(nearby_wall_list.size()-1);
-        // std::cout << "wall_eviction: " << random_wall_idx << "\n";
-
-        // printgrid(height, width, newgrid);
 
         position selected_wall = nearby_wall_list.at(random_wall_idx);
-
-        // if (selected_wall.y > 6) {
-        //     cout << "selected_wall.x: " << selected_wall.x << "\n";
-        // }
 
         if (visitedgrid[selected_wall.x][selected_wall.y] == 1) {
             nearby_wall_list.erase(nearby_wall_list.begin() + random_wall_idx);
@@ -331,10 +437,23 @@ void generateGridParallel(int procID, int nproc, int height, int width) {
 
         bool canEvict = canEvictWall(selected_wall, local_height, width, newgrid);
 
-        
-
         if (canEvict) {
             newgrid[selected_wall.x][selected_wall.y] = 0;
+            // Connect the current grid block to the next grid block 
+            if (selected_wall.x == local_height - 3 && 
+                is_grid_connected == false) {    
+                    int first_y = find_y_of_below_grid(local_height, width, newgrid);
+                    
+                    // Connect the current node but don't connect the second last row
+                    add_nearby_wall_to_list_with_skip(local_height, width, selected_wall, nearby_wall_list, newgrid, visitedgrid, selected_wall.x + 1, selected_wall.y);
+                    visitedgrid[selected_wall.x][selected_wall.y] = 1;
+                    nearby_wall_list.erase(nearby_wall_list.begin() + random_wall_idx);
+
+                    connect_grid_to_ghost_row(selected_wall.x, selected_wall.y, local_height, width, first_y, newgrid, visitedgrid, nearby_wall_list, procID);
+                    is_grid_connected = true;
+                    printgrid_with_proc(local_height, width, newgrid, procID);
+                    continue;
+            }
             add_nearby_wall_to_list(local_height, width, selected_wall, nearby_wall_list, newgrid, visitedgrid);
         }
 
@@ -347,5 +466,4 @@ void generateGridParallel(int procID, int nproc, int height, int width) {
     if (procID == 0) {
         printgrid(local_height, width, newgrid);
     }
-
 }
