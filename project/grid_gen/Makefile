@@ -1,5 +1,5 @@
 APP_NAME=generategrid
-OBJS := main.o helpers.o generategrid.o
+OBJS := main.o generategrid.o
 
 CXX = mpic++
 CXXFLAGS = -I. -O3 #-Wall -Wextra

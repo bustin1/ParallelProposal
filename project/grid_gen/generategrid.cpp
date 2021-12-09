@@ -79,7 +79,7 @@ void add_nearby_wall_to_list(int height, int width, position removed_wall, vecto
         }
     }
 
-    if (y < height - 1) {
+    if (y < width - 1) {
         position x1;
         x1.x = x;
         x1.y = y+1;
@@ -87,6 +87,48 @@ void add_nearby_wall_to_list(int height, int width, position removed_wall, vecto
             nearby_wall_list.push_back(x1);
         }
     }
+}
+
+bool canEvictWall(position wall_selection, int height, int width, std::vector<std::vector<int> >& newgrid) {
+
+    int x = wall_selection.x;
+    int y = wall_selection.y;
+
+    int nearby_wall_counters = 0;
+
+    // Check up
+    if (x-1 >= 0) {
+        if (newgrid[x-1][y] == 0) {
+            nearby_wall_counters++;
+        }
+    }
+
+    // Check down
+    if (x+1 <= height-1) {
+        if (newgrid[x+1][y] == 0) {
+            nearby_wall_counters++;
+        }
+    }
+
+    // Check left
+    if (y-1 >= 0) {
+        if (newgrid[x][y-1] == 0) {
+            nearby_wall_counters++;
+        }
+    }
+
+    // Check right
+    if (y+1 <= width-1) {
+        if (newgrid[x][y+1] == 0) {
+            nearby_wall_counters++;
+        }
+    }
+
+    if (nearby_wall_counters > 1){
+        return false;
+    }
+
+    return true;
 }
 
 void printgrid(int height, int width, std::vector<std::vector<int> >& newgrid) {
@@ -102,13 +144,23 @@ void printgrid(int height, int width, std::vector<std::vector<int> >& newgrid) {
 }
 
 // Helper function for validation
-void validate_ghost_row(node_t *node) {
+void validate_ghost_row(position *data, int length) {
     for (int i = 0; i<length; i++) {
         position curPos = data[i];
         if (curPos.x != -1) {
             cout << "Pos is 0: " << curPos.y << "\n";
         }
     }
+}
+
+int generateRandomNumberInRange(int end) {
+
+    if (end == 0) {
+        return 0;
+    }
+
+    int iSecret = rand() % end + 1;
+    return iSecret;
 }
 
 void send_ghost_row(node_t *node, position *data, int length) {
@@ -143,6 +195,25 @@ bool recieve_ghost_row(node_t *node, position *data, int length, int nproc) {
     return true;
 }
 
+void update_ghost_row_in_local_grid(position *ghost_data, int local_height, int width, vector<position>& nearby_wall_list, std::vector<std::vector<int> >& newgrid, std::vector<std::vector<int> >& visitedgrid) {
+
+    for (int i = 0; i<width; i++) {
+        position curPos = ghost_data[i];
+        if (curPos.x != -1) {
+            newgrid[local_height-1][curPos.y] = 0;
+            visitedgrid[local_height-1][curPos.y] = 1;
+        }
+    }
+
+    for (int i = 0; i<width; i++) {
+        position curPos = ghost_data[i];
+        if (curPos.x != -1) {
+            curPos.x = local_height-1;
+            // add_nearby_wall_to_list(local_height, width, curPos, nearby_wall_list, newgrid, visitedgrid);
+        }
+    }
+}
+
 void generateGridParallel(int procID, int nproc, int height, int width) {
 
     srand (time(NULL) + procID);
@@ -157,12 +228,15 @@ void generateGridParallel(int procID, int nproc, int height, int width) {
     // Start of the grid
     int start_height = (height / nproc) * procID;
     int end_height = ((height / nproc) * (procID + 1)) + 1;   // add +1 for ghost row
+    int local_height = end_height-start_height;
 
     cout << "proc: " << procID << ", start_height" << start_height << ", end_height" << end_height << "\n";
 
     std::vector<std::vector<int> > newgrid(end_height-start_height, std::vector<int>(width));
     std::vector<std::vector<int> > visitedgrid(end_height-start_height, std::vector<int>(width));
     vector<position> nearby_wall_list;
+
+    vector<position> ghost_wall_list;
 
     cout << "vectors size: " << newgrid[0].size() << "\n";
 
@@ -183,6 +257,7 @@ void generateGridParallel(int procID, int nproc, int height, int width) {
     // Process ghost row
     for (int i=0; i<width; i++) {
         int val = rand() % 2;
+        visitedgrid[0][i] = 1;
 
         if (val == 0) {
             position init_position;
@@ -190,10 +265,7 @@ void generateGridParallel(int procID, int nproc, int height, int width) {
             init_position.y = i;
 
             newgrid[init_position.x][init_position.y] = 0;
-            visitedgrid[init_position.x][init_position.y] = 1;
-
-            add_nearby_wall_to_list(height, width, init_position, nearby_wall_list, newgrid, visitedgrid);
-
+            
             send_packets[i] = init_position;
         } else {
             // Position is -1
@@ -205,10 +277,75 @@ void generateGridParallel(int procID, int nproc, int height, int width) {
         }
     }
 
-    printgrid(end_height - start_height, width, newgrid);
+    for (int i=0; i<width; i++) {
+        if (send_packets[i].x != -1) {
+            cout << "procId: " << procID << " selected:" << send_packets[i].x << ", " << send_packets[i].y << "\n";
+            add_nearby_wall_to_list(local_height, width, send_packets[i], nearby_wall_list, newgrid, visitedgrid);
+            
+            cout << "procId: " << procID << " wall_list_cor:" << nearby_wall_list[0].x << ", " << nearby_wall_list[0].y << "\n";
+            break;
+        }
+    }
+
+    cout << "procId: " << procID << " wall_list_size:" << nearby_wall_list.size() << "\n";
+
+    printgrid(local_height, width, newgrid);
 
     send_ghost_row(currentNode, send_packets, width);
 
     recieve_ghost_row(currentNode, recv_packets, width, nproc);
+
+    update_ghost_row_in_local_grid(recv_packets, local_height, width, nearby_wall_list, newgrid, visitedgrid);
+
+    if (procID != nproc - 1) {
+        printgrid(local_height, width, newgrid);
+        cout << "wall_list_size: " << nearby_wall_list.size() << "\n";
+    }
+
+    int num_of_mistakes = 0;
+
+    while (nearby_wall_list.size() > 0) {
+
+        int random_wall_idx = generateRandomNumberInRange(nearby_wall_list.size()-1);
+        // std::cout << "wall_eviction: " << random_wall_idx << "\n";
+
+        // printgrid(height, width, newgrid);
+
+        position selected_wall = nearby_wall_list.at(random_wall_idx);
+
+        // if (selected_wall.y > 6) {
+        //     cout << "selected_wall.x: " << selected_wall.x << "\n";
+        // }
+
+        if (visitedgrid[selected_wall.x][selected_wall.y] == 1) {
+            nearby_wall_list.erase(nearby_wall_list.begin() + random_wall_idx);
+            num_of_mistakes++;
+            continue;
+        }
+
+        // If it's the current or next ghost wall, skip
+        if (selected_wall.x == local_height - 1 || selected_wall.x == 0) {
+            nearby_wall_list.erase(nearby_wall_list.begin() + random_wall_idx);
+            continue;
+        }
+
+        bool canEvict = canEvictWall(selected_wall, local_height, width, newgrid);
+
+        
+
+        if (canEvict) {
+            newgrid[selected_wall.x][selected_wall.y] = 0;
+            add_nearby_wall_to_list(local_height, width, selected_wall, nearby_wall_list, newgrid, visitedgrid);
+        }
+
+        visitedgrid[selected_wall.x][selected_wall.y] = 1;
+        nearby_wall_list.erase(nearby_wall_list.begin() + random_wall_idx);
+    }
+
+    cout << "procID: " << procID << ", num_of_mistakes: " << num_of_mistakes << "\n";
+
+    if (procID == 0) {
+        printgrid(local_height, width, newgrid);
+    }
 
 }

@@ -48,7 +48,7 @@ void add_nearby_wall_to_list(int height, int width, position removed_wall, vecto
         }
     }
 
-    if (y < height - 1) {
+    if (y < width - 1) {
         position x1;
         x1.x = x;
         x1.y = y+1;
@@ -114,12 +114,6 @@ bool canEvictWall(position wall_selection, int height, int width, std::vector<st
 }
 
 int generateRandomNumberInRange(int end) {
-
-    // int start = 0;
-    
-    // std::uniform_int_distribution<uint32_t> uint_dist(start,end); // distribution in range [1, 6]
-    // // std::cout << dist6(rng_seed) << std::endl;
-    // return uint_dist(rng_seed);
 
     if (end == 0) {
         return 0;

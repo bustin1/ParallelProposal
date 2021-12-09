@@ -59,8 +59,10 @@ int main(int argc, char *argv[]) {
   // Run computation
   // startTime = MPI_Wtime();
   // compute(procID, nproc, outputFilename, prob, numIterations);
+  const clock_t begin_time = clock();
   generateGridParallel(procID, nproc, height, width);
   printf("proc %d ended.\n", procID);
+  printf("Grid generation time: %f\n", float( clock () - begin_time ) /  CLOCKS_PER_SEC);
   // endTime = MPI_Wtime();
 
   // Cleanup
