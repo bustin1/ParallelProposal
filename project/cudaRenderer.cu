@@ -244,7 +244,7 @@ void Pfilter::init() {
 
     if (DEBUG) {
         // bottom right
-        goal = (imgWidth - 1.5f*gridScale) + (gridScale * 2.f) * imgWidth;
+        goal = (imgWidth - 1.5f*gridScale) + (gridScale * 1.5f) * imgWidth;
     } else {
         goal = rand_location();
     }
@@ -481,7 +481,7 @@ void Pfilter::transition() {
     if (i_am_speed) {
         float orientation;
         int start;
-        cudaMemcpy(&orientation, &particleOrientations[particleGuess], sizeof(int), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&orientation, &particleOrientations[particleGuess], sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(&start, &particleLocations[particleGuess], sizeof(int), cudaMemcpyDeviceToHost);
         find_next_step(dtheta, speed, orientation, start); // hmm particleOrientations
         robot->move(dtheta, speed); 
@@ -885,11 +885,13 @@ void Pfilter::sample() {
     // 0) test if it is a majority
     int totalParticlesInGuess;
     cudaMemcpy(&totalParticlesInGuess, device_conf+numParticles-1, sizeof(int), cudaMemcpyDeviceToHost);
+    printf("your confidence is %f\n", (float)((float)totalParticlesInGuess / (float)numParticles));
     if ((float)((float)totalParticlesInGuess / (float)numParticles) >= param) {
         int roboPos = robot->get_pos();
         int roboAngle = robot->get_angle();
         particleGuess = 0;
         numParticles = 1;
+        i_am_speed = true;
         kernelWon<<<1,1>>>(roboPos, roboAngle);
         cudaDeviceSynchronize();
         printf("wow! ur a cool robot :p You win!\n");
