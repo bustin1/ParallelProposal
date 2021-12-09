@@ -101,6 +101,16 @@ void printgrid(int height, int width, std::vector<std::vector<int> >& newgrid) {
     }
 }
 
+// Helper function for validation
+void validate_ghost_row(node_t *node) {
+    for (int i = 0; i<length; i++) {
+        position curPos = data[i];
+        if (curPos.x != -1) {
+            cout << "Pos is 0: " << curPos.y << "\n";
+        }
+    }
+}
+
 void send_ghost_row(node_t *node, position *data, int length) {
 
     int currentProcID = node->procID;
@@ -197,8 +207,8 @@ void generateGridParallel(int procID, int nproc, int height, int width) {
 
     printgrid(end_height - start_height, width, newgrid);
 
-    // send_ghost_row(currentNode, send_packets, width);
+    send_ghost_row(currentNode, send_packets, width);
 
-    // recieve_ghost_row(currentNode, recv_packets, width, nproc);
+    recieve_ghost_row(currentNode, recv_packets, width, nproc);
 
 }
