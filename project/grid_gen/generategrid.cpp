@@ -42,13 +42,163 @@ node_t *initializeNode(int procID, int nproc) {
     newNode->nproc = nproc;
     newNode->firstRecv = true;
     // printf("New Node initialized for proc: %d\n", procID);
-    cout << "New Node initialized for proc:" << procID;
+    cout << "New Node initialized for proc:" << procID << "\n";
 
     return newNode;
 }
 
+void add_nearby_wall_to_list(int height, int width, position removed_wall, vector<position>& nearby_wall_list, std::vector<std::vector<int> >& newgrid, std::vector<std::vector<int> >& visitedgrid) {
+
+    int x = removed_wall.x;
+    int y = removed_wall.y;
+
+    if (x > 0) {
+        position x1;
+        x1.x = x-1;
+        x1.y = y;
+        if (newgrid[x1.x][x1.y] == 1 && visitedgrid[x1.x][x1.y] == 0) {
+            nearby_wall_list.push_back(x1);
+        }
+    }
+
+    if (x < height - 1) {
+        position x1;
+        x1.x = x+1;
+        x1.y = y;
+        if (newgrid[x1.x][x1.y] == 1 && visitedgrid[x1.x][x1.y] == 0) {
+            nearby_wall_list.push_back(x1);
+        }
+    }
+
+    if (y > 0) {
+        position x1;
+        x1.x = x;
+        x1.y = y-1;
+        if (newgrid[x1.x][x1.y] == 1 && visitedgrid[x1.x][x1.y] == 0) {
+            nearby_wall_list.push_back(x1);
+        }
+    }
+
+    if (y < height - 1) {
+        position x1;
+        x1.x = x;
+        x1.y = y+1;
+        if (newgrid[x1.x][x1.y] == 1 && visitedgrid[x1.x][x1.y] == 0) {
+            nearby_wall_list.push_back(x1);
+        }
+    }
+}
+
+void printgrid(int height, int width, std::vector<std::vector<int> >& newgrid) {
+
+    std::cout << "\n";
+
+    for (int i=0; i<newgrid.size(); i++) {
+        for (int j=0; j<width; j++) {
+            std::cout << newgrid[i][j] << " ";
+        }
+        std::cout << "\n";
+    }
+}
+
+void send_ghost_row(node_t *node, position *data, int length) {
+
+    int currentProcID = node->procID;
+    int nextProcID = (currentProcID - 1);
+
+    if (currentProcID == 0) {
+        return;
+    }
+
+    MPI_Isend(data, length, node->dtype, nextProcID, RING_SETUP_TAG,
+             MPI_COMM_WORLD, &(node->send_request));
+    // https://stackoverflow.com/questions/10017301/mpi-blocking-vs-non-blocking
+    // https://peerj.com/articles/cs-95.pdf
+}
+
+bool recieve_ghost_row(node_t *node, position *data, int length, int nproc) {
+
+    int currentProcID = node->procID;
+
+    // Last row won't receive any data
+    if (currentProcID == nproc - 1) {
+        return true;
+    }
+
+    MPI_Recv(data, length, node->dtype, MPI_ANY_SOURCE, RING_SETUP_TAG,
+                MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    cout << "Node " << currentProcID << " recieved data!!" << "\n";
+
+    return true;
+}
+
 void generateGridParallel(int procID, int nproc, int height, int width) {
 
-    initializeNode(procID, nproc);
+    srand (time(NULL) + procID);
+
+    if (height % nproc != 0) {
+        cout << "height not divisible by nproc" << "\n";
+        return;
+    }
+
+    node_t *currentNode = initializeNode(procID, nproc);
+
+    // Start of the grid
+    int start_height = (height / nproc) * procID;
+    int end_height = ((height / nproc) * (procID + 1)) + 1;   // add +1 for ghost row
+
+    cout << "proc: " << procID << ", start_height" << start_height << ", end_height" << end_height << "\n";
+
+    std::vector<std::vector<int> > newgrid(end_height-start_height, std::vector<int>(width));
+    std::vector<std::vector<int> > visitedgrid(end_height-start_height, std::vector<int>(width));
+    vector<position> nearby_wall_list;
+
+    cout << "vectors size: " << newgrid[0].size() << "\n";
+
+    for (int i=0; i<newgrid.size(); i++) {
+        for (int j=0; j<width; j++) {
+            newgrid[i][j] = 1;
+            visitedgrid[i][j] = 0;
+        }
+    }
+    
+    position *send_packets =
+        (position *)calloc(width+1, sizeof(position));
+    position *recv_packets =
+        (position *)calloc(width+1, sizeof(position));
+
+    int num_of_packets = 0;
+
+    // Process ghost row
+    for (int i=0; i<width; i++) {
+        int val = rand() % 2;
+
+        if (val == 0) {
+            position init_position;
+            init_position.x = 0;
+            init_position.y = i;
+
+            newgrid[init_position.x][init_position.y] = 0;
+            visitedgrid[init_position.x][init_position.y] = 1;
+
+            add_nearby_wall_to_list(height, width, init_position, nearby_wall_list, newgrid, visitedgrid);
+
+            send_packets[i] = init_position;
+        } else {
+            // Position is -1
+            position init_position;
+            init_position.x = -1;
+            init_position.y = -1;
+
+            send_packets[i] = init_position;
+        }
+    }
+
+    printgrid(end_height - start_height, width, newgrid);
+
+    // send_ghost_row(currentNode, send_packets, width);
+
+    // recieve_ghost_row(currentNode, recv_packets, width, nproc);
 
 }

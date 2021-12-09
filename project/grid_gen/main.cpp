@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <unistd.h>
 #include "mpi.h"
+#include <stdlib.h>     /* srand, rand */
+#include <time.h>       /* time */
 
 int main(int argc, char *argv[]) {
   int procID;
