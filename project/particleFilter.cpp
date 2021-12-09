@@ -95,7 +95,7 @@ void Pfilter::init() {
 
     if (DEBUG) {
         // bottom right
-        this->goal = (this->imgWidth - 1.5f*this->gridScale) + (this->gridScale * 2.f) * this->imgWidth;
+        this->goal = (this->imgWidth - 1.5f*this->gridScale) + (this->gridScale * 1.5f) * this->imgWidth;
     } else {
         this->goal = this->rand_location();
     }
