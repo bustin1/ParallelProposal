@@ -123,8 +123,8 @@ Pfilter::Pfilter(Robot* r, Grid* g,
     grid = g;
     i_am_speed = false;
 
-    // sample_counter = 0;
-    // sampling_pos_variance = gridScale / 5;
+    sample_counter = 0;
+    sampling_pos_variance = gridScale / 5;
 
     // 1) init some stuff
     grid->init();
@@ -207,6 +207,13 @@ int Pfilter::rand_location() {
 
 }
 
+__global__ void kernelWon(int roboPos, int roboAngle) {
+    int* particleLocations = pparams.particleLocations;
+    float* particleOrientations = pparams.particleOrientations;
+    particleLocations[0] = roboPos;
+    particleOrientations[0] = roboAngle;
+}
+
 __device__ int device_get_x(int i, int imgWidth) {
     return i % imgWidth;
 }
@@ -239,6 +246,11 @@ __device__ int device_to_img(int gridWidth, int i, int gridScale) {
 
 }
 
+__global__ void test(int robopos, float roboangle) {
+    pparams.particleLocations[0] = robopos;
+    pparams.particleOrientations[0] = roboangle;
+}
+
 
 void Pfilter::init() {
 
@@ -248,6 +260,7 @@ void Pfilter::init() {
     } else {
         goal = rand_location();
     }
+    test<<<1,1>>>(robot->get_pos(), robot->get_angle());
 
 }
 
@@ -485,6 +498,8 @@ void Pfilter::transition() {
         cudaMemcpy(&start, &particleLocations[particleGuess], sizeof(int), cudaMemcpyDeviceToHost);
         find_next_step(dtheta, speed, orientation, start); // hmm particleOrientations
         robot->move(dtheta, speed); 
+        kernelWon<<<1,1>>>(robot->get_pos(), robot->get_angle());
+        return;
     } else {
         // Robot will do it's own stuff
         robot->move_greedy(dtheta, speed); 
@@ -740,21 +755,22 @@ __global__ void kernelReweight(float* roboRayLen, int numRays, int numParticles,
         // and p := particle's observation
 
         __shared__ uint sInput[BLOCKSIZE];
-        __shared__ uint sOutput[BLOCKSIZE];
+        __shared__ uint sOutput[BLOCKSIZE+1];
         __shared__ uint sScratch[2 * BLOCKSIZE];
 
         int pRayLen = device_dist2d(coord, pLoc, imgWidth);
         int rayDiff = roboRayLen[rayId] - pRayLen;
 
-        sInput[threadIdx.x] = (uint) powf(rayDiff,2);
+        sInput[threadIdx.x] = powf(rayDiff,2);
 
         __syncthreads();
         sharedMemExclusiveScan(threadIdx.x, sInput, sOutput, sScratch, SCAN_BLOCK_DIM);
+        sOutput[BLOCKSIZE] = sOutput[BLOCKSIZE-1];
         __syncthreads();
 
-        if (rayId == 0) { // important that numRays == 16
-            double exp = sOutput[min(threadIdx.x+numRays, BLOCKSIZE-1)] - sOutput[threadIdx.x];
-            weights[particleId] *= pow(E, -exp / variance / sample_freq); // TODO: tune
+        if (rayId == 0) { // important that numRays % 16 == 0
+            double exp = sOutput[threadIdx.x+numRays] - sOutput[threadIdx.x];
+            weights[particleId] *= powf(E, -exp / variance / sample_freq); // TODO: tune
         }
 
     }
@@ -781,6 +797,7 @@ void Pfilter::reweight() {
 
     float* cudaRoboRayLen;
     cudaMalloc(&cudaRoboRayLen, sizeof(float) * numRays);
+    cudaMemcpy(cudaRoboRayLen, roboRayLen, sizeof(float) * numRays, cudaMemcpyHostToDevice);
     dim3 blockDim(BLOCKSIZE);
     dim3 gridDim((numParticles * numRays + BLOCKSIZE - 1) / BLOCKSIZE);
     kernelReweight<<<gridDim, blockDim>>>(cudaRoboRayLen, numRays, numParticles, variance, sample_freq);
@@ -796,7 +813,7 @@ void Pfilter::reweight() {
 
 
 __global__ void kernelSample(float* runningWeights, int* newParticleLocations, 
-                                                float* newParticleOrientations) {
+                                float* newParticleOrientations, int sampling_pos_variance) {
 
     // 0) check if we are confident in the robot location
     int imgWidth = pparams.imgWidth;
@@ -819,7 +836,7 @@ __global__ void kernelSample(float* runningWeights, int* newParticleLocations,
                 int candidate_random_pos;
                 do {
                     // TODO: variance is based on gridScale. Is this a good hueristic?
-                    candidate_random_pos = device_gaussian2d(particleLocations[i], imgWidth, 2, threadId);
+                    candidate_random_pos = device_gaussian2d(particleLocations[i], imgWidth, sampling_pos_variance, threadId);
                 } while (grid[device_to_grid(imgWidth, candidate_random_pos, gridScale)] == 1);
                 
                 newParticleLocations[threadId] = candidate_random_pos;
@@ -846,12 +863,6 @@ __global__ void kernelConfidence(int* device_conf, int particleGuess, int n) {
 
 }
 
-__global__ void kernelWon(int roboPos, int roboAngle) {
-    int* particleLocations = pparams.particleLocations;
-    float* particleOrientations = pparams.particleOrientations;
-    particleLocations[0] = roboPos;
-    particleOrientations[0] = roboAngle;
-}
 
 __global__ void kernelLocationsAndOrientations(int* newParticleLocations,
                                                 float* newParticleOrientations) {
@@ -880,21 +891,28 @@ void Pfilter::sample() {
     thrust::device_ptr<int> d_input(device_conf);
     thrust::inclusive_scan(d_input, d_input+numParticles, d_input);
 
-    float param = .75f;
+    float param = .33f;
 
     // 0) test if it is a majority
     int totalParticlesInGuess;
     cudaMemcpy(&totalParticlesInGuess, device_conf+numParticles-1, sizeof(int), cudaMemcpyDeviceToHost);
-    printf("your confidence is %f\n", (float)((float)totalParticlesInGuess / (float)numParticles));
+    // printf("your confidence is %f\n", (float)((float)totalParticlesInGuess / (float)numParticles));
     if ((float)((float)totalParticlesInGuess / (float)numParticles) >= param) {
-        int roboPos = robot->get_pos();
-        int roboAngle = robot->get_angle();
-        particleGuess = 0;
-        numParticles = 1;
-        i_am_speed = true;
-        kernelWon<<<1,1>>>(roboPos, roboAngle);
-        cudaDeviceSynchronize();
-        printf("wow! ur a cool robot :p You win!\n");
+        int tmp;
+        cudaMemcpy(&tmp, particleLocations + particleGuess, sizeof(int), cudaMemcpyDeviceToHost);
+        if (to_grid(imgWidth, tmp, gridScale)
+                    == to_grid(imgWidth, robot->get_pos(), gridScale)) {
+            int roboPos = robot->get_pos();
+            int roboAngle = robot->get_angle();
+            particleGuess = 0;
+            numParticles = 1;
+            i_am_speed = true;
+            kernelWon<<<1,1>>>(roboPos, roboAngle);
+            cudaDeviceSynchronize();
+            printf("wow! ur a cool robot :p You win!\n");
+        } else {
+            uniform_sample();
+        }
         cudaFree(device_conf);
         return;
     }
@@ -914,7 +932,7 @@ void Pfilter::sample() {
     cudaMalloc(&newParticleLocations, sizeof(int) * numParticles);
     cudaMalloc(&newParticleOrientations, sizeof(float) * numParticles);
     kernelSample<<<gridDim, blockDim>>>(weights, newParticleLocations, 
-                                                    newParticleOrientations); 
+                                        newParticleOrientations, sampling_pos_variance);
     cudaDeviceSynchronize();
     
     kernelLocationsAndOrientations<<<gridDim, blockDim>>>

@@ -90,10 +90,10 @@ bool Robot::visited(int rayPos) {
 // note that dtheta must be clamped with yaw rate
 bool Robot::move(float dtheta, float speed) {
 
-    double candidate_angle = double_mod(this->angle + dtheta, 2 * PI);
+    float candidate_angle = double_mod(this->angle + dtheta, 2 * PI);
 
-    double dirX = speed * cos(candidate_angle);
-    double dirY = speed * sin(candidate_angle);
+    float dirX = speed * cos(candidate_angle);
+    float dirY = speed * sin(candidate_angle);
     
     int rx = pos % this->imgWidth;
     int ry = pos / this->imgWidth;
