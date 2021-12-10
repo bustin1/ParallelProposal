@@ -221,14 +221,14 @@ bool canEvictWall(position wall_selection, int height, int width, std::vector<st
 
 void printgrid(int height, int width, std::vector<std::vector<int> >& newgrid) {
 
-    // std::cout << "\n";
+    std::cout << "\n";
 
-    // for (int i=0; i<newgrid.size(); i++) {
-    //     for (int j=0; j<width; j++) {
-    //         std::cout << newgrid[i][j] << " ";
-    //     }
-    //     std::cout << "\n";
-    // }
+    for (int i=0; i<newgrid.size(); i++) {
+        for (int j=0; j<width; j++) {
+            std::cout << newgrid[i][j] << " ";
+        }
+        std::cout << "\n";
+    }
 }
 
 void printgrid_with_proc(int height, int width, std::vector<std::vector<int> >& newgrid, int procID) {
@@ -406,8 +406,6 @@ void delete_input_file(const char* input_file_name) {
 
 void write_to_file(char *output_file_name, int procID, int total_height, int width, int local_height, std::vector<std::vector<int> >& newgrid) {
     FILE *fp;
-    // TODO: wire_output_filename is wrong
-    // fp = fopen(wire_output_filename, "w");
     
     fp = fopen(output_file_name, "a");
 
@@ -500,20 +498,11 @@ void generateGridParallel(int procID, int nproc, int height, int width, char *ou
         }
     }
 
-    cout << "procId: " << procID << " wall_list_size:" << nearby_wall_list.size() << "\n";
-
-    printgrid(local_height, width, newgrid);
-
     send_ghost_row(currentNode, send_packets, width);
 
     recieve_ghost_row(currentNode, recv_packets, width, nproc);
 
     update_ghost_row_in_local_grid(recv_packets, local_height, width, nearby_wall_list, newgrid, visitedgrid);
-
-    if (procID != nproc - 1) {
-        printgrid(local_height, width, newgrid);
-        cout << "wall_list_size: " << nearby_wall_list.size() << "\n";
-    }
 
     int num_of_mistakes = 0;
     bool is_grid_connected = false;
@@ -552,7 +541,6 @@ void generateGridParallel(int procID, int nproc, int height, int width, char *ou
 
                     connect_grid_to_ghost_row(selected_wall.x, selected_wall.y, local_height, width, first_y, newgrid, visitedgrid, nearby_wall_list, procID);
                     is_grid_connected = true;
-                    printgrid_with_proc(local_height, width, newgrid, procID);
                     continue;
             }
             add_nearby_wall_to_list(local_height, width, selected_wall, nearby_wall_list, newgrid, visitedgrid);
@@ -561,14 +549,6 @@ void generateGridParallel(int procID, int nproc, int height, int width, char *ou
         visitedgrid[selected_wall.x][selected_wall.y] = 1;
         nearby_wall_list.erase(nearby_wall_list.begin() + random_wall_idx);
     }
-
-    cout << "procID: " << procID << ", num_of_mistakes: " << num_of_mistakes << "\n";
-
-    if (procID == 0) {
-        printgrid(local_height, width, newgrid);
-    }
-
-    // MPI_Barrier(MPI_COMM_WORLD);
 
     // Create the status packet
     grid_status *status_packets =

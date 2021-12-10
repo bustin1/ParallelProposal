@@ -57,16 +57,12 @@ int main(int argc, char *argv[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
   // Run computation
-  // startTime = MPI_Wtime();
-  // compute(procID, nproc, outputFilename, prob, numIterations);
   const clock_t begin_time = clock();
   generateGridParallel(procID, nproc, height, width, outputFilename);
   printf("proc %d ended.\n", procID);
   printf("Grid generation time: %f\n", float( clock () - begin_time ) /  CLOCKS_PER_SEC);
-  // endTime = MPI_Wtime();
 
   // Cleanup
   MPI_Finalize();
-  // printf("Elapsed time for proc %d: %f\n", procID, endTime - startTime);
   return 0;
 }
