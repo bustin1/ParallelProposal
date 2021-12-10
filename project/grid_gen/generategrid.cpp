@@ -42,8 +42,7 @@ node_t *initializeNode(int procID, int nproc) {
     newNode->dtype = mpi_packet_t;
     newNode->nproc = nproc;
     newNode->firstRecv = true;
-    // printf("New Node initialized for proc: %d\n", procID);
-    cout << "New Node initialized for proc:" << procID << "\n";
+    cout << "New Data Node initialized for proc:" << procID << "\n";
 
     return newNode;
 }
@@ -80,8 +79,7 @@ node_t *initializeNodeWithCompletion(int procID, int nproc) {
     newNode->dtype = mpi_packet_t;
     newNode->nproc = nproc;
     newNode->firstRecv = true;
-    // printf("New Node initialized for proc: %d\n", procID);
-    cout << "New Node initialized for proc:" << procID << "\n";
+    cout << "New Status Node initialized for proc:" << procID << "\n";
 
     return newNode;
 }
@@ -219,6 +217,7 @@ bool canEvictWall(position wall_selection, int height, int width, std::vector<st
     return true;
 }
 
+// Helper function
 void printgrid(int height, int width, std::vector<std::vector<int> >& newgrid) {
 
     std::cout << "\n";
@@ -231,17 +230,18 @@ void printgrid(int height, int width, std::vector<std::vector<int> >& newgrid) {
     }
 }
 
+// Helper function
 void printgrid_with_proc(int height, int width, std::vector<std::vector<int> >& newgrid, int procID) {
 
-    // std::cout << "\n";
+    std::cout << "\n";
 
-    // for (int i=0; i<newgrid.size(); i++) {
-    //     std::cout << "procID " << procID << ":  ";
-    //     for (int j=0; j<width; j++) {
-    //         std::cout << newgrid[i][j] << " ";
-    //     }
-    //     std::cout << "\n";
-    // }
+    for (int i=0; i<newgrid.size(); i++) {
+        std::cout << "procID " << procID << ":  ";
+        for (int j=0; j<width; j++) {
+            std::cout << newgrid[i][j] << " ";
+        }
+        std::cout << "\n";
+    }
 }
 
 // Helper function for validation
@@ -291,7 +291,7 @@ bool recieve_ghost_row(node_t *node, position *data, int length, int nproc) {
     MPI_Recv(data, length, node->dtype, MPI_ANY_SOURCE, RING_SETUP_TAG,
                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-    cout << "Node " << currentProcID << " recieved data!!" << "\n";
+    // cout << "Node " << currentProcID << " recieved data!!" << "\n";
 
     return true;
 }
@@ -375,8 +375,6 @@ int connect_grid_to_ghost_row(int cur_x, int cur_y, int local_height, int width,
     }
     visitedgrid[selected_wall.x][selected_wall.y] = 1;
 
-    cout << "procID: " << procID << " cur_y " << cur_y << " " << "first_y " << first_y << "\n";
-
     // Move left
     if (cur_y < first_y) {
         for (int i=cur_y+1; i<=first_y; i++) {
@@ -449,8 +447,7 @@ void generateGridParallel(int procID, int nproc, int height, int width, char *ou
 
     vector<position> ghost_wall_list;
 
-    cout << "vectors size: " << newgrid[0].size() << "\n";
-
+    // Initialize the local grids
     for (int i=0; i<newgrid.size(); i++) {
         for (int j=0; j<width; j++) {
             newgrid[i][j] = 1;
@@ -490,14 +487,13 @@ void generateGridParallel(int procID, int nproc, int height, int width, char *ou
 
     for (int i=0; i<width; i++) {
         if (send_packets[i].x != -1) {
-            cout << "procId: " << procID << " selected:" << send_packets[i].x << ", " << send_packets[i].y << "\n";
             add_nearby_wall_to_list(local_height, width, send_packets[i], nearby_wall_list, newgrid, visitedgrid);
             
-            cout << "procId: " << procID << " wall_list_cor:" << nearby_wall_list[0].x << ", " << nearby_wall_list[0].y << "\n";
             break;
         }
     }
 
+    // Communicate the ghost rows
     send_ghost_row(currentNode, send_packets, width);
 
     recieve_ghost_row(currentNode, recv_packets, width, nproc);
@@ -507,6 +503,7 @@ void generateGridParallel(int procID, int nproc, int height, int width, char *ou
     int num_of_mistakes = 0;
     bool is_grid_connected = false;
 
+    // Iterate while there exist walls which are potential targets.
     while (nearby_wall_list.size() > 0) {
 
         int random_wall_idx = generateRandomNumberInRange(nearby_wall_list.size()-1);
@@ -557,6 +554,7 @@ void generateGridParallel(int procID, int nproc, int height, int width, char *ou
 
     node_t *statusNode = initializeNodeWithCompletion(procID, nproc);
 
+    // Send the status signal to start writing to file.
     if (procID == 0) {
         write_to_file(output_file_name, procID, height, width, local_height, newgrid);
         send_status_signal(statusNode, status_packets, 1, nproc);
