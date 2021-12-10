@@ -8,6 +8,10 @@ typedef struct  {
     int y;
 } position;
 
+typedef struct {
+    int status; // if 1, then completed
+} grid_status;
+
 typedef struct ringNode {
     int procID;
     int nproc;
@@ -17,6 +21,6 @@ typedef struct ringNode {
     MPI_Datatype dtype;
 } node_t;
 
-void generateGridParallel(int procID, int nproc, int height, int width);
+void generateGridParallel(int procID, int nproc, int height, int width, char* outputFilename);
 
 #endif
