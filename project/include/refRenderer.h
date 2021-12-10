@@ -4,6 +4,7 @@
 
 #include "particleFilter.h"
 #include "image.h"
+#include "grid.h"
 #include "util.h"
 
 
@@ -19,7 +20,11 @@ class RefRenderer {
 private:
 
     Pfilter* filter;
+    int* cudaGrid;
+    int* cudaParticleLocations;
+    float* cudaImage;
     Image* image;
+
 
 public:
 

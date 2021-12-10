@@ -33,8 +33,8 @@ public:
     Robot();
     virtual ~Robot();
 
-    bool move(double dtheta, double speed);
-    void move_greedy(double& dtheta, double& speed);
+    bool move(float dtheta, float speed);
+    void move_greedy(float& dtheta, float& speed);
     void set_pose(int p, double a);
     void init(const int rays, Grid* grid, int gridScale);
     void print_stuff();

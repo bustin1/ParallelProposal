@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <time.h>
 
-
 #include "include/robot.h"
 #include "include/refRenderer.h"
 #include "include/grid.h"

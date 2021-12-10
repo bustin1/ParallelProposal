@@ -88,12 +88,12 @@ bool Robot::visited(int rayPos) {
 
 // turn dtheta degrees from it's own angle and move with it's speed
 // note that dtheta must be clamped with yaw rate
-bool Robot::move(double dtheta, double speed) {
+bool Robot::move(float dtheta, float speed) {
 
-    double candidate_angle = double_mod(this->angle + dtheta, 2 * PI);
+    float candidate_angle = double_mod(this->angle + dtheta, 2 * PI);
 
-    double dirX = speed * cos(candidate_angle);
-    double dirY = speed * sin(candidate_angle);
+    float dirX = speed * cos(candidate_angle);
+    float dirY = speed * sin(candidate_angle);
     
     int rx = pos % this->imgWidth;
     int ry = pos / this->imgWidth;
@@ -121,7 +121,7 @@ bool Robot::move(double dtheta, double speed) {
 
 }
 
-void Robot::move_greedy(double& dtheta, double& speed) {
+void Robot::move_greedy(float& dtheta, float& speed) {
 
 
     int bestRayInd = 0;
@@ -175,9 +175,13 @@ void Robot::move_greedy(double& dtheta, double& speed) {
 
     //4) .9 chance that the robot forgets where he's been
     /*
+<<<<<<< HEAD
     if (rand_num() > .9) {
+=======
+    if (rand_num() > .95) {
+>>>>>>> 36d5ffa42714f08601fac77daeca8380d6052dd0
         this->reset_visited();
-        printf("Shucks :( ... I forgot where i've been");
+        printf("Shucks :( ... I forgot where i've been\n");
     }
     */
 

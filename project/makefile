@@ -25,7 +25,7 @@ LDFRAMEWORKS := $(addprefix -framework , $(FRAMEWORKS))
 
 NVCC=nvcc
 
-OBJS=$(OBJDIR)/main.o $(OBJDIR)/display.o $(OBJDIR)/refRenderer.o $(OBJDIR)/particleFilter.o $(OBJDIR)/util.o $(OBJDIR)/robot.o
+OBJS=$(OBJDIR)/main.o $(OBJDIR)/display.o $(OBJDIR)/cudaRenderer.o $(OBJDIR)/util.o $(OBJDIR)/robot.o
 
 
 .PHONY: dirs clean

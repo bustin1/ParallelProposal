@@ -68,6 +68,7 @@ struct Grid {
                 open[j++] = i;
             }
         }
+        num_open = j;
     }
 
     void calc_num_closed() {
@@ -78,6 +79,7 @@ struct Grid {
                 closed[j++] = i;
             }
         }
+        num_closed = j;
     }
 
 

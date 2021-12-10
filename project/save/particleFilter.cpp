@@ -33,7 +33,6 @@ Pfilter::Pfilter(Robot* robot, Grid* grid,
 
     this->particleLocations = new int[numParticles];
     this->particleOrientations = new double[numParticles];
-    this->particleWallHit = new int[numParticles];
     this->rays = new int[numRays * numParticles];
     this->weights = new double[numParticles]; 
     this->robot = robot;
@@ -65,7 +64,6 @@ Pfilter::Pfilter(Robot* robot, Grid* grid,
 
 }
 
-
 void Pfilter::reset_weights() {
     for (int i=0; i<this->numParticles; i++) {
         this->weights[i] = 1;
@@ -90,9 +88,6 @@ int Pfilter::rand_location() {
 
 void Pfilter::init() {
 
-    for (int i=0; i<this->numParticles; i++) {
-        this->particleWallHit[i] = 0;
-    }
     if (DEBUG) {
         // bottom right
         this->goal = (this->imgWidth - 1.5f*this->gridScale) + (this->gridScale * 1.5f) * this->imgWidth;
@@ -253,14 +248,12 @@ void Pfilter::transition() {
         int candidate_pos = candidate_x + this->imgWidth*candidate_y;
 
         this->particleOrientations[i] = candidate_angle;
-        this->particleWallHit[i] = 0;
 
         if (!grid->is_wall_at(to_grid(this->imgWidth, candidate_pos, this->gridScale))) {
             this->particleLocations[i] = candidate_pos;
         } else { 
             // randomize the angle for the particle to move in
             this->particleOrientations[i] = gaussian1d(candidate_angle, .25);
-            this->particleWallHit[i] = 1;
         }
 
     }
@@ -413,9 +406,6 @@ void Pfilter::reweight() {
 //        printf("exp: %f\n", -exp / variance / sample_freq);
 //        printf("weights: %f\n", this->weights[i]);
         this->weights[i] *= pow(E, -exp / variance / sample_freq); // TODO: tune
-        if (this->particleWallHit[i] == 1) {
-            this->weights[i] /= 5;
-        }
 //        printf("weights[%d]: %f\n", i, weights[i]);
 
     }

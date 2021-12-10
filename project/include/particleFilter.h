@@ -2,10 +2,12 @@
 #ifndef _PARTICLE_FILTER_H
 #define _PARTICLE_FILTER_H
 
+
 #include "grid.h"
 #include "image.h"
 #include "robot.h"
 #include "util.h"
+#include <curand_kernel.h>
 
 class Pfilter {
 
@@ -17,8 +19,10 @@ private:
     int* particleLocations;
     int* particleWallHit;
     int* rays;
-    double* particleOrientations;
-    double* weights;
+    int* open;
+    int* closed;
+    float* particleOrientations;
+    float* weights;
 
     const int numRays;
     const int maxRayLen;
@@ -28,6 +32,8 @@ private:
     const int particleScale;
     const int maxNumParticles;
     const int DEBUG;
+
+    curandState* states;
 
     int numParticles;
     int goalScale;
@@ -41,7 +47,7 @@ private:
     // unseen helper functions
     void init();
     int rand_location();
-    void find_next_step(double& dtheta, double& speed, double theta);
+    void find_next_step(float& dtheta, float& speed, float theta, int start);
     void transition();
     void firerays(int loc, int *ptr, double angle_bias);
     void reweight();
@@ -82,6 +88,7 @@ public:
     int* get_rays();
 
 };
+
 
 
 
