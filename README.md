@@ -23,6 +23,8 @@ Maze Generation
 cd grid_gen
 mpirun -np <proc_count> ./generategrid -f <output_file> -h <height> -w <width>
 ```
+NOTE: This will only work if the height and width are divisible by the number of processors.
+
 Particle Filtering (CUDA)
 ```
 ./render -i <input> -n <# of particles> -r <# of rays> -g <size of one wall widith=height> -d <debug mode>
@@ -32,3 +34,4 @@ For more help simply run
 ```
 ./render
 ```
+If you want to look at the openMP and sequential versions, take a look at the branches in this repo https://github.com/bustin1/ParallelProposal
