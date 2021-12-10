@@ -23,7 +23,7 @@ Maze Generation
 cd grid_gen
 mpirun -np <proc_count> ./generategrid -f <output_file> -h <height> -w <width>
 ```
-Particle Filtering
+Particle Filtering (CUDA)
 ```
 ./render -i <input> -n <# of particles> -r <# of rays> -g <size of one wall widith=height> -d <debug mode>
 ./render -i tests/hard.txt -n 1000 -r 16 -g 20 -d 2
